@@ -6,6 +6,7 @@ import (
 	"github.com/scouser-122/gophermart/internal/config"
 	"github.com/scouser-122/gophermart/internal/handler"
 	"github.com/scouser-122/gophermart/internal/logger"
+	"github.com/scouser-122/gophermart/internal/repository/db"
 	"github.com/scouser-122/gophermart/internal/service"
 )
 
@@ -17,7 +18,17 @@ func main() {
 		panic(err)
 	}
 
-	userService := service.NewUserService()
+	database := db.NewPostgresDB(serverConfig)
+	if err := database.Open(); err != nil {
+		logger.Sugar.Errorf("cannot connect to database: %w", err)
+		panic(err)
+	}
+	defer database.Close()
+
+	userService, err := service.NewUserService(&database)
+	if err != nil {
+		panic(err)
+	}
 
 	handlers := handler.CreateHandlers(userService)
 	router := handler.CreateChiRouter(&handlers, &serverConfig)

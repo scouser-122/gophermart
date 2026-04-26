@@ -31,7 +31,7 @@ func NewZapLogger(level string, environment string) *zap.Logger {
 		panic(fmt.Errorf("unknown environment for logging config: %s", environment))
 	}
 	cfg.Level = lvl
-	zl, err := cfg.Build()
+	zl, err := cfg.Build(zap.AddStacktrace(zap.ErrorLevel))
 	if err != nil {
 		return nil
 	}

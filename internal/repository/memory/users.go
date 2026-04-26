@@ -18,7 +18,9 @@ func (storage *UserMemoryStorage) AddUser(ctx context.Context, user *models.User
 		return storageUser.Login == user.Login
 	})
 	if alreadyExist {
-		return nil, models.ErrorLoginAlreadyTaken{}
+		return nil, &models.CustomErr{
+			Code: models.CustomErrLoginBusy,
+		}
 	}
 	user.CreatedAt = time.Now()
 	storage.Users = append(storage.Users, user)

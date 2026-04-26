@@ -1,6 +1,7 @@
-create table users (
-    login varchar(255) not null,
-    password varchar(255) not null,
-    created_at timestamp not null,
-    primary key(login)
+CREATE TABLE users (
+    login varchar(255) NOT NULL,
+    password varchar(255) NOT NULL,
+    balance DOUBLE PRECISION DEFAULT 0.0,
+    created_at timestamp NOT NULL,
+    PRIMARY KEY(login)
 )

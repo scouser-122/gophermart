@@ -2,23 +2,29 @@ package models
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
-type ErrorLoginAlreadyTaken struct {
+type CustomErr struct {
+	Code    int
 	Message string
-	Err     error
 }
 
-func (e ErrorLoginAlreadyTaken) Error() string {
-	return e.Message
+func (e *CustomErr) Error() string {
+	return fmt.Sprintf("code: %d", e.Code)
 }
 
-var (
-	ErrLoginAlreadyTaken = ErrorLoginAlreadyTaken{}
+const (
+	CustomErrRegisterFailed = iota
+	CustomErrLoginBusy
+	CustomErrLoginInvalidFormat
+	CustomErrUserNotFound
 )
+
+const UnexpectedErrorMessage = "unexpected error happen"
 
 type ErrorClassification int
 

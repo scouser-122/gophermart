@@ -34,7 +34,7 @@ func (h *UsersHandler) HandleRegister(res http.ResponseWriter, req *http.Request
 	if err != nil {
 		logger.Error("cannot read request body", zap.Error(err))
 		res.WriteHeader(http.StatusBadRequest)
-		res.Write(models.NewErrorResponseBuffer())
+		res.Write(models.NewErrorResponseBuffer(models.UnexpectedErrorMessage))
 		return
 	}
 
@@ -42,21 +42,33 @@ func (h *UsersHandler) HandleRegister(res http.ResponseWriter, req *http.Request
 	if err := json.Unmarshal(bodyBuf, &user); err != nil {
 		logger.Error("cannot decode request json body", zap.Error(err))
 		res.WriteHeader(http.StatusBadRequest)
-		res.Write(models.NewErrorResponseBuffer())
+		res.Write(models.NewErrorResponseBuffer(models.UnexpectedErrorMessage))
 		return
 	}
 
 	_, err = h.Service.Register(req.Context(), &user)
 	if err != nil {
-		if errors.As(err, &models.ErrLoginAlreadyTaken) {
-			logger.Error("login already taken", zap.Error(err))
-			res.WriteHeader(http.StatusConflict)
-			res.Write(models.NewErrorResponseBuffer())
+		var customErr *models.CustomErr
+		if errors.As(err, &customErr) {
+			var errMessage string
+			switch customErr.Code {
+			case models.CustomErrLoginBusy:
+				errMessage = "login already taken"
+				res.WriteHeader(http.StatusConflict)
+			case models.CustomErrLoginInvalidFormat:
+				errMessage = "login invalid format"
+				res.WriteHeader(http.StatusBadRequest)
+			default:
+				errMessage = models.UnexpectedErrorMessage
+				res.WriteHeader(http.StatusInternalServerError)
+			}
+			logger.Error(errMessage, zap.Error(err))
+			res.Write(models.NewErrorResponseBuffer(errMessage))
 			return
 		} else {
-			logger.Error("unexpected error happen", zap.Error(err))
+			logger.Error(models.UnexpectedErrorMessage, zap.Error(err))
 			res.WriteHeader(http.StatusInternalServerError)
-			res.Write(models.NewErrorResponseBuffer())
+			res.Write(models.NewErrorResponseBuffer(models.UnexpectedErrorMessage))
 			return
 		}
 	}
@@ -70,7 +82,7 @@ func (h *UsersHandler) HandleRegister(res http.ResponseWriter, req *http.Request
 	if err := enc.Encode(response); err != nil {
 		logger.Error("error encoding response", zap.Error(err))
 		res.WriteHeader(http.StatusInternalServerError)
-		res.Write(models.NewErrorResponseBuffer())
+		res.Write(models.NewErrorResponseBuffer(models.UnexpectedErrorMessage))
 		return
 	}
 

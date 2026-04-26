@@ -10,9 +10,10 @@ type CommonResponse struct {
 	Message string `json:"message,omitempty"`
 }
 
-func NewErrorResponseBuffer() []byte {
+func NewErrorResponseBuffer(message string) []byte {
 	result := CommonResponse{
-		Status: "error",
+		Status:  "error",
+		Message: message,
 	}
 	var buf bytes.Buffer
 	enc := json.NewEncoder(&buf)

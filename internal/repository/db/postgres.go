@@ -7,12 +7,16 @@ import (
 	"path/filepath"
 	"reflect"
 
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
+
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/scouser-122/gophermart/internal/config"
 	"github.com/scouser-122/gophermart/internal/logger"
+	"github.com/wcamarao/pmx"
 )
 
 type DBInterface interface {
@@ -156,6 +160,21 @@ func (db *PostgresDatabase) QueryRow(ctx context.Context, query string, args ...
 		return nil, fmt.Errorf("database connection was not opened")
 	}
 	return db.Pool.QueryRow(ctx, query, args...), nil
+}
+
+func (db *PostgresDatabase) Select(ctx context.Context, dst any, query string, args ...any) error {
+	if isNil(db.Pool) {
+		return fmt.Errorf("database connection was not opened")
+	}
+	pmx.Select(ctx, db.Pool, dst, query, args...)
+	return nil
+}
+
+func (db *PostgresDatabase) Insert(ctx context.Context, entity any) (pgconn.CommandTag, error) {
+	if isNil(db.Pool) {
+		return pgconn.CommandTag{}, fmt.Errorf("database connection was not opened")
+	}
+	return pmx.Insert(ctx, db.Pool, entity)
 }
 
 func (db *PostgresDatabase) Begin(ctx context.Context) (pgx.Tx, error) {
