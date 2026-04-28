@@ -15,6 +15,7 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
+// RequestLogger is a middleware which logs incoming requests
 func RequestLogger(h http.HandlerFunc, serverConfig *config.ServerConfig) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
@@ -41,9 +42,6 @@ func RequestLogger(h http.HandlerFunc, serverConfig *config.ServerConfig) http.H
 				return
 			}
 			if len(bodyBytes) > 0 {
-				// log.WithFields(logrus.Fields{
-				// 	"request_body": string(bodyBytes),
-				// }).Debug()
 				reqLogger.With(zap.String("request_body", string(bodyBytes))).Debug("")
 			}
 			r.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
@@ -53,9 +51,6 @@ func RequestLogger(h http.HandlerFunc, serverConfig *config.ServerConfig) http.H
 
 		duration := time.Since(start)
 
-		// log.WithFields(logrus.Fields{
-		// 	"status": responseData.Status, "duration": duration,
-		// }).Info("request processed")
 		reqLogger.With(
 			zap.Int("status", responseData.Status),
 			zap.Duration("duration", duration),

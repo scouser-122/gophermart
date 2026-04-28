@@ -10,12 +10,12 @@ import (
 	"github.com/scouser-122/gophermart/internal/repository/db"
 )
 
-type UserService struct {
+type UsersService struct {
 	UserStorage repository.UserStorage
 }
 
-func NewUserService(database *db.PostgresDatabase) (*UserService, error) {
-	service := UserService{}
+func NewUsersService(database *db.PostgresDatabase) (*UsersService, error) {
+	service := UsersService{}
 	if err := database.Ping(context.Background()); err != nil {
 		return nil, fmt.Errorf("cannot connect to DB")
 	}
@@ -26,7 +26,7 @@ func NewUserService(database *db.PostgresDatabase) (*UserService, error) {
 	return &service, nil
 }
 
-func (service *UserService) Register(ctx context.Context, user *models.User) (*models.User, error) {
+func (service *UsersService) Register(ctx context.Context, user *models.User) (*models.User, error) {
 	if user.Login == "" {
 		return nil, &models.CustomErr{
 			Code: models.CustomErrLoginInvalidFormat,

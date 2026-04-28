@@ -15,17 +15,23 @@ import (
 	"go.uber.org/zap"
 )
 
+// UsersHandler specifies http request handler for requests to Users service
 type UsersHandler struct {
-	Service      *service.UserService
+	// Service specifies service which will process request
+	Service *service.UsersService
+
+	// ServerConfig app server config
 	ServerConfig *config.ServerConfig
 }
 
-func NewUsersHandler(service *service.UserService) *UsersHandler {
+// NewUsersHandler creates and returns pointer to new UsersHandler
+func NewUsersHandler(service *service.UsersService) *UsersHandler {
 	return &UsersHandler{
 		Service: service,
 	}
 }
 
+// HandleRegister processes user register request
 func (h *UsersHandler) HandleRegister(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("content-type", "application/json")
 	logger := logger.GetLogger(req.Context())

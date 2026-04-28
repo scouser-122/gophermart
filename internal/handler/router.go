@@ -8,6 +8,7 @@ import (
 	"github.com/scouser-122/gophermart/internal/logger"
 )
 
+// CreateChiRouter creates and returns chi router for processing http requests
 func CreateChiRouter(handlers *[]Handler, serverConfig *config.ServerConfig) *chi.Mux {
 	r := chi.NewRouter()
 	for _, h := range *handlers {

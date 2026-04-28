@@ -25,7 +25,7 @@ func main() {
 	}
 	defer database.Close()
 
-	userService, err := service.NewUserService(&database)
+	userService, err := service.NewUsersService(&database)
 	if err != nil {
 		panic(err)
 	}

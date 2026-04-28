@@ -5,11 +5,15 @@ import (
 	"encoding/json"
 )
 
+// CommonResponse defines common response structure with status and message
 type CommonResponse struct {
+	// Status response status
 	Status  string `json:"status"`
 	Message string `json:"message,omitempty"`
 }
 
+// NewErrorResponseBuffer creates byte buffer for error response
+// to be passed in Write method of ResponseWriter
 func NewErrorResponseBuffer(message string) []byte {
 	result := CommonResponse{
 		Status:  "error",

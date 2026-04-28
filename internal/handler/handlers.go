@@ -6,14 +6,21 @@ import (
 	"github.com/scouser-122/gophermart/internal/service"
 )
 
+// Handler specifies parameters for http request handler
 type Handler struct {
-	Method         string
+	// Method specifies http method
+	Method string
+
+	// URLPathPattern specifies request path
 	URLPathPattern string
-	HandlerFn      http.HandlerFunc
+
+	// HandlerFn is a function which will be called to process request
+	HandlerFn http.HandlerFunc
 }
 
+// CreateHandlers creates and returns http request handlers for this service
 func CreateHandlers(
-	userService *service.UserService,
+	userService *service.UsersService,
 ) []Handler {
 	handlers := []Handler{}
 

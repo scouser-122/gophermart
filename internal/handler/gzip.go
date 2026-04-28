@@ -112,6 +112,8 @@ func shouldDecompressRequest(r *http.Request) bool {
 	return slices.Contains(contentEncoding, "gzip")
 }
 
+// GzipMiddleware is middleware for handling http requests
+// which implement suppoting gzip encoded requests and returnin gzip encoded reponses
 func GzipMiddleware(h http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ow := w

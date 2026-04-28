@@ -9,12 +9,14 @@ import (
 	"github.com/scouser-122/gophermart/internal/models"
 )
 
+// RetryConfig is configuration parameters for implementing retry logic for any operation
 type RetryConfig struct {
 	MaxAttempts       int
 	InitialBackoff    int
 	BackoffMultiplier int
 }
 
+// DefaultRetryConfig is a default retry configuration parameters
 func DefaultRetryConfig() RetryConfig {
 	return RetryConfig{
 		MaxAttempts:       3,
@@ -23,6 +25,7 @@ func DefaultRetryConfig() RetryConfig {
 	}
 }
 
+// DataBaseRequestRetry implements retry mechanizm for DB interaction operations
 func DataBaseRequestRetry(ctx context.Context, config RetryConfig, operation func() error) error {
 	var lastErr error
 
