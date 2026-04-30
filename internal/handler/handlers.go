@@ -21,16 +21,20 @@ type Handler struct {
 // CreateHandlers creates and returns http request handlers for this service
 func CreateHandlers(
 	userService *service.UsersService,
+	jwtService *service.JwtService,
 ) []Handler {
 	handlers := []Handler{}
 
-	usersHandler := UsersHandler{
-		Service: userService,
-	}
+	usersHandler := NewUsersHandler(userService, jwtService)
 	handlers = append(handlers, Handler{
 		Method:         http.MethodPost,
 		URLPathPattern: "/api/user/register",
 		HandlerFn:      usersHandler.HandleRegister,
+	})
+	handlers = append(handlers, Handler{
+		Method:         http.MethodPost,
+		URLPathPattern: "/api/user/login",
+		HandlerFn:      usersHandler.HandleLogin,
 	})
 
 	return handlers

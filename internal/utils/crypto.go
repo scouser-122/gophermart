@@ -1,6 +1,10 @@
 package utils
 
-import "crypto/rand"
+import (
+	"crypto/rand"
+	"crypto/sha256"
+	"fmt"
+)
 
 // GenerateRandomBytes generates random slice of bytes with specified size
 func GenerateRandomBytes(size int) ([]byte, error) {
@@ -11,4 +15,14 @@ func GenerateRandomBytes(size int) ([]byte, error) {
 	}
 
 	return b, nil
+}
+
+// CountSha256Sum counts SHA-256 hash for specified string
+func CountSha256Sum(value string) (string, error) {
+	hash := sha256.New()
+	_, err := hash.Write([]byte(value))
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%x", hash.Sum(nil)), nil
 }

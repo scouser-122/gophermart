@@ -21,11 +21,11 @@ type MockPostgresDBTestData struct {
 
 func NewMockPostgresDB(serverConfig config.ServerConfig, mockPool *MockPostgresPool) PostgresDatabase {
 	database := PostgresDatabase{
-		Config: config.DBConnectionConfig{
+		config: config.DBConnectionConfig{
 			DSN:         serverConfig.DBDataSourceName,
 			RetryConfig: config.DefaultRetryConfig(),
 		},
-		Pool: mockPool,
+		pool: mockPool,
 	}
 	return database
 }

@@ -29,8 +29,9 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	jwtService := service.NewJwtService(&serverConfig)
 
-	handlers := handler.CreateHandlers(userService)
+	handlers := handler.CreateHandlers(userService, jwtService)
 	router := handler.CreateChiRouter(&handlers, &serverConfig)
 
 	logger.Sugar.Infof("starting server on http://%s", serverConfig.RunAddr)

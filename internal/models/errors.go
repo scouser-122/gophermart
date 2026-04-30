@@ -28,6 +28,7 @@ const (
 	CustomErrLoginBusy          = 10002
 	CustomErrLoginInvalidFormat = 10003
 	CustomErrUserNotFound       = 10004
+	CustomErrLoginFailed        = 10005
 )
 
 // UnexpectedErrorMessage message for unexpecter app errors, usualy leads to returning InternalServerError

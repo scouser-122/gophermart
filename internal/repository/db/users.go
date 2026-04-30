@@ -2,16 +2,18 @@ package db
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/scouser-122/gophermart/internal/models"
 )
 
+// PostgresUserStorage implements UserStorage interface to store users data in Postgres DB
 type PostgresUserStorage struct {
 	Database *PostgresDatabase
 }
 
+// AddUser adds specified user,
+// returns error if user with specified login already exists or save process failed
 func (storage *PostgresUserStorage) AddUser(ctx context.Context, user *models.User) (*models.User, error) {
 	var dbUser models.User
 	err := storage.Database.Select(ctx, &dbUser, "SELECT * FROM users WHERE login = $1", user.Login)
@@ -29,6 +31,8 @@ func (storage *PostgresUserStorage) AddUser(ctx context.Context, user *models.Us
 	return user, nil
 }
 
+// GetUser takes user by login,
+// returns error if retrive process failed or user not found
 func (storage *PostgresUserStorage) GetUser(ctx context.Context, login string) (*models.User, error) {
 	var dbUser models.User
 	err := storage.Database.Select(ctx, &dbUser, "SELECT * FROM users WHERE login = $1", login)
@@ -38,5 +42,5 @@ func (storage *PostgresUserStorage) GetUser(ctx context.Context, login string) (
 	if dbUser.Login == "" {
 		return nil, &models.CustomErr{Code: models.CustomErrUserNotFound}
 	}
-	return nil, fmt.Errorf("user not found")
+	return &dbUser, nil
 }

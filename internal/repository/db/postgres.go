@@ -19,39 +19,53 @@ import (
 	"github.com/wcamarao/pmx"
 )
 
+// DBInterface specifies interface to interact with DB
 type DBInterface interface {
+	// Ping makes ping to DB and returns error if not succeeded
 	Ping(ctx context.Context) error
+
+	// Close closes DB connection
 	Close()
+
+	// Exec makes request which changes DB content
 	Exec(ctx context.Context, sql string, arguments ...interface{}) (pgconn.CommandTag, error)
+
+	// QueryRow takes one row by request with specified parameters
 	QueryRow(ctx context.Context, sql string, arguments ...interface{}) pgx.Row
+
+	// Query takes multiple rows by request with specified parameters
 	Query(ctx context.Context, sql string, arguments ...interface{}) (pgx.Rows, error)
+
+	// Begin creates DB transaction
 	Begin(ctx context.Context) (pgx.Tx, error)
 }
 
+// PostgresDatabase used to interact with Postgres DB
 type PostgresDatabase struct {
-	Config config.DBConnectionConfig
-	Pool   DBInterface
+	config config.DBConnectionConfig
+	pool   DBInterface
 }
 
+// Open connects to Postgres DB and applies migrations
 func (db *PostgresDatabase) Open() error {
-	if db.Config.DSN == "" {
+	if db.config.DSN == "" {
 		return fmt.Errorf("connection string is empty")
 	}
 
 	var err error
-	config, err := pgxpool.ParseConfig(db.Config.DSN)
+	config, err := pgxpool.ParseConfig(db.config.DSN)
 	if err != nil {
-		return fmt.Errorf("failed to parse connection string: %q, err: %w", db.Config.DSN, err)
+		return fmt.Errorf("failed to parse connection string: %q, err: %w", db.config.DSN, err)
 	}
 
-	db.Pool, err = pgxpool.NewWithConfig(context.Background(), config)
+	db.pool, err = pgxpool.NewWithConfig(context.Background(), config)
 	if err != nil {
 		return fmt.Errorf("failed to create connection pool: %w", err)
 	}
 
-	if err := db.Pool.Ping(context.Background()); err != nil {
-		db.Pool.Close()
-		db.Pool = nil
+	if err := db.pool.Ping(context.Background()); err != nil {
+		db.pool.Close()
+		db.pool = nil
 		return fmt.Errorf("failed to ping database: %w", err)
 	}
 
@@ -59,8 +73,8 @@ func (db *PostgresDatabase) Open() error {
 
 	err = db.runMigrations()
 	if err != nil {
-		db.Pool.Close()
-		db.Pool = nil
+		db.pool.Close()
+		db.pool = nil
 		return fmt.Errorf("failed to run migrations: %w", err)
 	}
 
@@ -74,7 +88,7 @@ func (db *PostgresDatabase) runMigrations() error {
 	}
 	m, err := migrate.New(
 		path,
-		db.Config.DSN,
+		db.config.DSN,
 	)
 	if err != nil {
 		return err
@@ -102,92 +116,100 @@ func getMigrationsPath() (string, error) {
 	return "file://" + migrationsPath, nil
 }
 
+// Close closes DB connection
 func (db *PostgresDatabase) Close() {
-	if !isNil(db.Pool) {
-		db.Pool.Close()
+	if !isNil(db.pool) {
+		db.pool.Close()
 	}
 }
 
+// Ping make ping request to DB
 func (db *PostgresDatabase) Ping(ctx context.Context) error {
-	if isNil(db.Pool) {
+	if isNil(db.pool) {
 		return fmt.Errorf("database connection was not opened")
 	}
 	return config.DataBaseRequestRetry(
 		ctx,
-		db.Config.RetryConfig,
+		db.config.RetryConfig,
 		func() error {
-			return db.Pool.Ping(ctx)
+			return db.pool.Ping(ctx)
 		},
 	)
 }
 
+// Exec makes request which changes DB content
 func (db *PostgresDatabase) Exec(ctx context.Context, query string, args ...any) (pgconn.CommandTag, error) {
-	if isNil(db.Pool) {
+	if isNil(db.pool) {
 		return pgconn.CommandTag{}, fmt.Errorf("database connection was not opened")
 	}
 	var commandTag pgconn.CommandTag
 	err := config.DataBaseRequestRetry(
 		ctx,
-		db.Config.RetryConfig,
+		db.config.RetryConfig,
 		func() error {
 			var err error
-			commandTag, err = db.Pool.Exec(ctx, query, args...)
+			commandTag, err = db.pool.Exec(ctx, query, args...)
 			return err
 		},
 	)
 	return commandTag, err
 }
 
+// Query takes multiple rows by request with specified parameters
 func (db *PostgresDatabase) Query(ctx context.Context, query string, args ...any) (pgx.Rows, error) {
-	if isNil(db.Pool) {
+	if isNil(db.pool) {
 		return nil, fmt.Errorf("database connection was not opened")
 	}
 	var rows pgx.Rows
 	err := config.DataBaseRequestRetry(
 		ctx,
-		db.Config.RetryConfig,
+		db.config.RetryConfig,
 		func() error {
 			var err error
-			rows, err = db.Pool.Query(ctx, query, args...)
+			rows, err = db.pool.Query(ctx, query, args...)
 			return err
 		},
 	)
 	return rows, err
 }
 
+// QueryRow takes one row by request with specified parameters
 func (db *PostgresDatabase) QueryRow(ctx context.Context, query string, args ...any) (pgx.Row, error) {
-	if isNil(db.Pool) {
+	if isNil(db.pool) {
 		return nil, fmt.Errorf("database connection was not opened")
 	}
-	return db.Pool.QueryRow(ctx, query, args...), nil
+	return db.pool.QueryRow(ctx, query, args...), nil
 }
 
+// Select takes one object of passed pointer type by request specified parameters
 func (db *PostgresDatabase) Select(ctx context.Context, dst any, query string, args ...any) error {
-	if isNil(db.Pool) {
+	if isNil(db.pool) {
 		return fmt.Errorf("database connection was not opened")
 	}
-	pmx.Select(ctx, db.Pool, dst, query, args...)
+	pmx.Select(ctx, db.pool, dst, query, args...)
 	return nil
 }
 
+// Insert inserts one record with object of passed pointer type
 func (db *PostgresDatabase) Insert(ctx context.Context, entity any) (pgconn.CommandTag, error) {
-	if isNil(db.Pool) {
+	if isNil(db.pool) {
 		return pgconn.CommandTag{}, fmt.Errorf("database connection was not opened")
 	}
-	return pmx.Insert(ctx, db.Pool, entity)
+	return pmx.Insert(ctx, db.pool, entity)
 }
 
+// Begin creates DB transaction
 func (db *PostgresDatabase) Begin(ctx context.Context) (pgx.Tx, error) {
-	if isNil(db.Pool) {
+	if isNil(db.pool) {
 		return nil, fmt.Errorf("database connection was not opened")
 	}
 	var tx pgx.Tx
 	err := config.DataBaseRequestRetry(
 		ctx,
-		db.Config.RetryConfig,
+		db.config.RetryConfig,
 		func() error {
 			var err error
-			tx, err = db.Pool.Begin(ctx)
+			tx, err = db.pool.Begin(ctx)
 			return err
 		},
 	)
