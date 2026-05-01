@@ -19,8 +19,8 @@ import (
 	"github.com/wcamarao/pmx"
 )
 
-// DBInterface specifies interface to interact with DB
-type DBInterface interface {
+// DBPoolInterface specifies interface to interact with DB via connection pool
+type DBPoolInterface interface {
 	// Ping makes ping to DB and returns error if not succeeded
 	Ping(ctx context.Context) error
 
@@ -40,10 +40,19 @@ type DBInterface interface {
 	Begin(ctx context.Context) (pgx.Tx, error)
 }
 
+// // DBPoolInterface specifies interface to interact with DB via pmx library
+// type DBPmxInterface interface {
+// 	// Select takes one object of passed pointer type by request specified parameters
+// 	Select(ctx context.Context, e pmx.Executor, dest any, sql string, args ...any) error
+
+// 	// Select takes one object of passed pointer type by request specified parameters
+// 	Insert(ctx context.Context, e pmx.Executor, entity any) (pgconn.CommandTag, error)
+// }
+
 // PostgresDatabase used to interact with Postgres DB
 type PostgresDatabase struct {
 	config config.DBConnectionConfig
-	pool   DBInterface
+	pool   DBPoolInterface
 }
 
 // Open connects to Postgres DB and applies migrations
@@ -186,8 +195,7 @@ func (db *PostgresDatabase) Select(ctx context.Context, dst any, query string, a
 	if isNil(db.pool) {
 		return fmt.Errorf("database connection was not opened")
 	}
-	pmx.Select(ctx, db.pool, dst, query, args...)
-	return nil
+	return pmx.Select(ctx, db.pool, dst, query, args...)
 }
 
 // Insert inserts one record with object of passed pointer type

@@ -35,6 +35,9 @@ func (service *UsersService) Register(ctx context.Context, user *models.User) (*
 			Code: models.CustomErrLoginInvalidFormat,
 		}
 	}
+	if user.Password == "" {
+		return nil, &models.CustomErr{Code: models.CustomErrPasswordInvalidFormat}
+	}
 	passwordHash, err := utils.CountSha256Sum(user.Password)
 	if err != nil {
 		return nil, err
@@ -51,6 +54,9 @@ func (service *UsersService) Register(ctx context.Context, user *models.User) (*
 func (service *UsersService) Login(ctx context.Context, user *models.User) error {
 	if user.Login == "" {
 		return &models.CustomErr{Code: models.CustomErrLoginInvalidFormat}
+	}
+	if user.Password == "" {
+		return &models.CustomErr{Code: models.CustomErrPasswordInvalidFormat}
 	}
 	storedUser, err := service.userStorage.GetUser(ctx, user.Login)
 	if err != nil {

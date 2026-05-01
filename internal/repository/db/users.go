@@ -2,8 +2,10 @@ package db
 
 import (
 	"context"
+	"errors"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/scouser-122/gophermart/internal/models"
 )
 
@@ -17,7 +19,7 @@ type PostgresUserStorage struct {
 func (storage *PostgresUserStorage) AddUser(ctx context.Context, user *models.User) (*models.User, error) {
 	var dbUser models.User
 	err := storage.Database.Select(ctx, &dbUser, "SELECT * FROM users WHERE login = $1", user.Login)
-	if err != nil {
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return nil, err
 	}
 	if dbUser.Login != "" {
