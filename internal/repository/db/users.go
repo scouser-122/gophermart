@@ -23,7 +23,7 @@ func (storage *PostgresUserStorage) AddUser(ctx context.Context, user *models.Us
 		return nil, err
 	}
 	if dbUser.Login != "" {
-		return nil, &models.CustomErr{Code: models.CustomErrLoginBusy}
+		return nil, &models.CustomErr{Code: models.CustomErrUserLoginBusy}
 	}
 	user.CreatedAt = time.Now()
 	_, err = storage.Database.Insert(ctx, user)

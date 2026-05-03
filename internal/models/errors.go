@@ -24,12 +24,14 @@ func (e *CustomErr) Error() string {
 
 // Error codes
 const (
-	CustomErrRegisterFailed        = 10001
-	CustomErrLoginBusy             = 10002
-	CustomErrLoginInvalidFormat    = 10003
-	CustomErrPasswordInvalidFormat = 10004
-	CustomErrUserNotFound          = 10005
-	CustomErrLoginFailed           = 10006
+	CustomErrUserRegisterFailed        = 10001
+	CustomErrUserLoginBusy             = 10002
+	CustomErrUserLoginInvalidFormat    = 10003
+	CustomErrUserPasswordInvalidFormat = 10004
+	CustomErrUserNotFound              = 10005
+	CustomErrUserLoginFailed           = 10006
+	CustomErrOrderAlreadyUploaded      = 10007
+	CustomErrOrderIDInvalidFormat      = 10008
 )
 
 // UnexpectedErrorMessage message for unexpecter app errors, usualy leads to returning InternalServerError

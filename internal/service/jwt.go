@@ -1,6 +1,7 @@
 package service
 
 import (
+	"errors"
 	"time"
 
 	"github.com/golang-jwt/jwt/v4"
@@ -33,4 +34,26 @@ func (service *JwtService) GenerateJWT(login string) (string, error) {
 	}
 
 	return tokenString, nil
+}
+
+// GetUserLoginFromJWT parses JWT and takes login from it's structure
+func (service *JwtService) GetUserLoginFromJWT(jwtString string) (string, error) {
+	claims := &jwt.RegisteredClaims{}
+
+	token, err := jwt.ParseWithClaims(jwtString, claims, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, errors.New("unexpected signing method")
+		}
+		return []byte(service.serverConfig.JwtSecretKey), nil
+	})
+
+	if err != nil {
+		return "", err
+	}
+
+	if claims, ok := token.Claims.(*jwt.RegisteredClaims); ok && token.Valid {
+		return claims.Subject, nil
+	}
+
+	return "", errors.New("invalid token")
 }

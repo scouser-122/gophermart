@@ -6,33 +6,33 @@ import "time"
 type OrderStatus string
 
 const (
-	// New new order
-	New OrderStatus = "NEW"
+	// NewOrder new order
+	NewOrder OrderStatus = "NEW"
 
-	// Processing order is processing
-	Processing OrderStatus = "PROCESSING"
+	// ProcessingOrder order is processing
+	ProcessingOrder OrderStatus = "PROCESSING"
 
 	// Processing order is invalid
-	Invalid OrderStatus = "INVALID"
+	InvalidOrder OrderStatus = "INVALID"
 
-	// Processed order is already processed
-	Processed OrderStatus = "PROCESSED"
+	// ProcessedOrder order is already processed
+	ProcessedOrder OrderStatus = "PROCESSED"
 )
 
 // Order model
 type Order struct {
 	// ID order identifier
-	ID string
+	ID string `db:"id"`
 
 	// Status order status
-	Status OrderStatus
+	Status OrderStatus `db:"status"`
 
 	// UploadedAt time when order was uploaded (saved in DB)
-	UploadedAt time.Time
+	UploadedAt time.Time `db:"uploaded_at"`
 
 	// Order accrual
-	Accrual *int64
+	Accrual *int64 `db:"accrual"`
 
 	// UserLogin login of user who made this order
-	UserLogin string
+	UserLogin string `db:"user_login"`
 }

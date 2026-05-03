@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/scouser-122/gophermart/internal/models"
 	"github.com/scouser-122/gophermart/internal/repository"
@@ -16,27 +15,24 @@ type UsersService struct {
 }
 
 // NewUsersService creates new UsersService instance
-func NewUsersService(database *db.PostgresDatabase) (*UsersService, error) {
+func NewUsersService(database *db.PostgresDatabase) *UsersService {
 	service := UsersService{}
-	if err := database.Ping(context.Background()); err != nil {
-		return nil, fmt.Errorf("cannot connect to DB")
-	}
 	dbStorage := db.PostgresUserStorage{
 		Database: database,
 	}
 	service.userStorage = &dbStorage
-	return &service, nil
+	return &service
 }
 
 // Register runs registration process for specified user
 func (service *UsersService) Register(ctx context.Context, user *models.User) (*models.User, error) {
 	if user.Login == "" {
 		return nil, &models.CustomErr{
-			Code: models.CustomErrLoginInvalidFormat,
+			Code: models.CustomErrUserLoginInvalidFormat,
 		}
 	}
 	if user.Password == "" {
-		return nil, &models.CustomErr{Code: models.CustomErrPasswordInvalidFormat}
+		return nil, &models.CustomErr{Code: models.CustomErrUserPasswordInvalidFormat}
 	}
 	passwordHash, err := utils.CountSha256Sum(user.Password)
 	if err != nil {
@@ -53,10 +49,10 @@ func (service *UsersService) Register(ctx context.Context, user *models.User) (*
 // Login runs login process for specified user
 func (service *UsersService) Login(ctx context.Context, user *models.User) error {
 	if user.Login == "" {
-		return &models.CustomErr{Code: models.CustomErrLoginInvalidFormat}
+		return &models.CustomErr{Code: models.CustomErrUserLoginInvalidFormat}
 	}
 	if user.Password == "" {
-		return &models.CustomErr{Code: models.CustomErrPasswordInvalidFormat}
+		return &models.CustomErr{Code: models.CustomErrUserPasswordInvalidFormat}
 	}
 	storedUser, err := service.userStorage.GetUser(ctx, user.Login)
 	if err != nil {
@@ -67,7 +63,7 @@ func (service *UsersService) Login(ctx context.Context, user *models.User) error
 		return err
 	}
 	if passwordHash != storedUser.Password {
-		return &models.CustomErr{Code: models.CustomErrLoginFailed}
+		return &models.CustomErr{Code: models.CustomErrUserLoginFailed}
 	}
 	return nil
 }

@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/scouser-122/gophermart/internal/config"
@@ -23,16 +25,18 @@ func main() {
 		logger.Sugar.Errorf("cannot connect to database: %w", err)
 		panic(err)
 	}
+	if err := database.Ping(context.Background()); err != nil {
+		panic(fmt.Errorf("cannot connect to DB"))
+	}
 	defer database.Close()
 
-	userService, err := service.NewUsersService(&database)
-	if err != nil {
-		panic(err)
-	}
+	userService := service.NewUsersService(&database)
+	ordersService := service.NewOrdersService(&database)
+
 	jwtService := service.NewJwtService(&serverConfig)
 
-	handlers := handler.CreateHandlers(userService, jwtService)
-	router := handler.CreateChiRouter(&handlers, &serverConfig)
+	handlers := handler.CreateHandlers(userService, ordersService, jwtService)
+	router := handler.CreateChiRouter(&handlers, &serverConfig, jwtService)
 
 	logger.Sugar.Infof("starting server on http://%s", serverConfig.RunAddr)
 	logger.Sugar.Fatal(http.ListenAndServe(serverConfig.RunAddr, router))

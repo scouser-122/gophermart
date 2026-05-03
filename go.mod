@@ -31,6 +31,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgerrcode v0.0.0-20250907135507-afb5586c32a6
 	github.com/jackc/pgx/v5 v5.9.2
+	github.com/luhnmod10/go v0.0.0-20220306055956-4517d2c7ba83
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.11.1
 	github.com/wcamarao/pmx v0.0.0-20250128213824-efd027b2d411

@@ -206,15 +206,13 @@ func TestUserRegister(t *testing.T) {
 			test.mockDB.MockPool.MockMethods(test.mockDB)
 			database := db.NewMockPostgresDB(serverConfig, test.mockDB.MockPool)
 
-			userService, err := service.NewUsersService(&database)
-			if err != nil {
-				panic(err)
-			}
+			userService := service.NewUsersService(&database)
+			ordersService := service.NewOrdersService(&database)
 			jwtService := service.NewJwtService(&serverConfig)
 
-			handlers := CreateHandlers(userService, jwtService)
+			handlers := CreateHandlers(userService, ordersService, jwtService)
 
-			r := CreateChiRouter(&handlers, &serverConfig)
+			r := CreateChiRouter(&handlers, &serverConfig, jwtService)
 
 			var bodyReader io.Reader
 			if test.request.body != "" {
@@ -371,15 +369,13 @@ func TestUserLogin(t *testing.T) {
 			test.mockDB.MockPool.MockMethods(test.mockDB)
 			database := db.NewMockPostgresDB(serverConfig, test.mockDB.MockPool)
 
-			userService, err := service.NewUsersService(&database)
-			if err != nil {
-				panic(err)
-			}
+			userService := service.NewUsersService(&database)
+			ordersService := service.NewOrdersService(&database)
 			jwtService := service.NewJwtService(&serverConfig)
 
-			handlers := CreateHandlers(userService, jwtService)
+			handlers := CreateHandlers(userService, ordersService, jwtService)
 
-			r := CreateChiRouter(&handlers, &serverConfig)
+			r := CreateChiRouter(&handlers, &serverConfig, jwtService)
 
 			var bodyReader io.Reader
 			if test.request.body != "" {

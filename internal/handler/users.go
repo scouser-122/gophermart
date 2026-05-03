@@ -100,13 +100,13 @@ func (h *UsersHandler) HandleRegister(res http.ResponseWriter, req *http.Request
 func processCustomErrorRegister(customErr *models.CustomErr, res http.ResponseWriter) string {
 	var errMessage string
 	switch customErr.Code {
-	case models.CustomErrLoginBusy:
+	case models.CustomErrUserLoginBusy:
 		errMessage = "login already taken"
 		res.WriteHeader(http.StatusConflict)
-	case models.CustomErrLoginInvalidFormat:
+	case models.CustomErrUserLoginInvalidFormat:
 		errMessage = "login invalid format"
 		res.WriteHeader(http.StatusBadRequest)
-	case models.CustomErrPasswordInvalidFormat:
+	case models.CustomErrUserPasswordInvalidFormat:
 		errMessage = "login invalid format"
 		res.WriteHeader(http.StatusBadRequest)
 	default:
@@ -184,16 +184,16 @@ func (h *UsersHandler) HandleLogin(res http.ResponseWriter, req *http.Request) {
 func processCustomErrorLogin(customErr *models.CustomErr, res http.ResponseWriter) string {
 	var errMessage string
 	switch customErr.Code {
-	case models.CustomErrLoginBusy:
+	case models.CustomErrUserLoginBusy:
 		errMessage = "login already taken"
 		res.WriteHeader(http.StatusConflict)
-	case models.CustomErrLoginInvalidFormat:
+	case models.CustomErrUserLoginInvalidFormat:
 		errMessage = "login invalid format"
 		res.WriteHeader(http.StatusBadRequest)
-	case models.CustomErrPasswordInvalidFormat:
+	case models.CustomErrUserPasswordInvalidFormat:
 		errMessage = "login invalid format"
 		res.WriteHeader(http.StatusBadRequest)
-	case models.CustomErrLoginFailed:
+	case models.CustomErrUserLoginFailed:
 		errMessage = "login invalid format"
 		res.WriteHeader(http.StatusUnauthorized)
 	default:
