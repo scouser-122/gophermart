@@ -1,8 +1,6 @@
 package handler
 
 import (
-	"bytes"
-	"encoding/json"
 	"io"
 	"net/http"
 
@@ -36,11 +34,19 @@ func (h *OrdersHandler) HandleUploadOrder(res http.ResponseWriter, req *http.Req
 	res.Header().Set("content-type", "application/json")
 	logger := logger.GetLogger(req.Context())
 
+	reqContentType := req.Header.Get("Content-Type")
+	if reqContentType != "text/plain" {
+		logger.Sugar().Errorf("incorrect request content type", reqContentType)
+		res.WriteHeader(http.StatusBadRequest)
+		res.Write(models.NewErrorResponseBuffer("incorrect request content type"))
+		return
+	}
+
 	bodyBuf, err := io.ReadAll(req.Body)
 	if err != nil {
 		logger.Error("cannot read request body", zap.Error(err))
 		res.WriteHeader(http.StatusBadRequest)
-		res.Write(models.NewErrorResponseBuffer(models.UnexpectedErrorMessage))
+		res.Write(models.NewErrorResponseBuffer("cannot read request body"))
 		return
 	}
 
@@ -50,7 +56,7 @@ func (h *OrdersHandler) HandleUploadOrder(res http.ResponseWriter, req *http.Req
 	if !ok {
 		logger.Error("unauthorized request", zap.Error(err))
 		res.WriteHeader(http.StatusUnauthorized)
-		res.Write(models.NewErrorResponseBuffer(models.UnexpectedErrorMessage))
+		res.Write(models.NewErrorResponseBuffer("unauthorized request"))
 		return
 	}
 
@@ -76,22 +82,10 @@ func (h *OrdersHandler) HandleUploadOrder(res http.ResponseWriter, req *http.Req
 		}
 	}
 
-	response := models.CommonResponse{
-		Status:  "ok",
-		Message: "order successfully saved",
-	}
-	var buf bytes.Buffer
-	enc := json.NewEncoder(&buf)
-	if err := enc.Encode(response); err != nil {
-		logger.Error("error encoding response", zap.Error(err))
-		res.WriteHeader(http.StatusInternalServerError)
-		res.Write(models.NewErrorResponseBuffer(models.UnexpectedErrorMessage))
-		return
-	}
-
-	logger.Info(response.Message)
+	successMessage := "order successfully saved"
+	logger.Info(successMessage)
 	res.WriteHeader(http.StatusAccepted)
-	res.Write(buf.Bytes())
+	res.Write(models.NewSuccessResponseBuffer(successMessage))
 }
 
 func processCustomErrorOrderUpload(customErr *models.CustomErr) (int, string) {
@@ -100,10 +94,13 @@ func processCustomErrorOrderUpload(customErr *models.CustomErr) (int, string) {
 	switch customErr.Code {
 	case models.CustomErrOrderIDInvalidFormat:
 		errMessage = "order id invalid format"
-		status = http.StatusBadRequest
+		status = http.StatusUnprocessableEntity
 	case models.CustomErrOrderAlreadyUploaded:
 		errMessage = "order already uploaded"
 		status = http.StatusOK
+	case models.CustomErrOrderAlreadyUploadedByAnotherUser:
+		errMessage = "order already uploaded by another user"
+		status = http.StatusConflict
 	default:
 		errMessage = models.UnexpectedErrorMessage
 		status = http.StatusInternalServerError

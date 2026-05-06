@@ -35,7 +35,7 @@ func AuthMiddleware(h http.HandlerFunc, jwtService *service.JwtService) http.Han
 		userLogin, err := jwtService.GetUserLoginFromJWT(tokenString)
 		if err != nil {
 			logger.Sugar.Error("invalid or expired token", zap.Error(err))
-			w.WriteHeader(http.StatusBadRequest)
+			w.WriteHeader(http.StatusUnauthorized)
 			w.Write(models.NewErrorResponseBuffer("authorization failed"))
 			return
 		}

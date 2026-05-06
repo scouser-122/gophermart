@@ -38,5 +38,9 @@ func (storage *PostgresOrderStorage) AddOrder(ctx context.Context, orderID strin
 			return nil, err
 		}
 	}
-	return nil, &models.CustomErr{Code: models.CustomErrOrderAlreadyUploaded}
+	if dbOrder.UserLogin == userLogin {
+		return nil, &models.CustomErr{Code: models.CustomErrOrderAlreadyUploaded}
+	} else {
+		return nil, &models.CustomErr{Code: models.CustomErrOrderAlreadyUploadedByAnotherUser}
+	}
 }

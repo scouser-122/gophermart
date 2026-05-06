@@ -13,27 +13,11 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/pkg/errors"
-	"github.com/scouser-122/gophermart/internal/config"
 	"github.com/scouser-122/gophermart/internal/models"
 	"github.com/scouser-122/gophermart/internal/repository/db"
-	"github.com/scouser-122/gophermart/internal/service"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
-
-type want struct {
-	code               int
-	contentType        string
-	body               string
-	headersToBePresent []string
-}
-
-type request struct {
-	method      string
-	contentType string
-	path        string
-	body        string
-}
 
 // Мок для pgx.Rows
 type MockPostgresRowsUser struct {
@@ -51,11 +35,11 @@ func (m *MockPostgresRowsUser) Scan(dest ...interface{}) error {
 		return errors.New("no more rows")
 	}
 
-	metric := m.users[m.index]
-	*dest[0].(*string) = metric.Login
-	*dest[1].(*string) = metric.Password
-	*dest[2].(*float64) = metric.Balance
-	*dest[3].(*time.Time) = metric.CreatedAt
+	user := m.users[m.index]
+	*dest[0].(*string) = user.Login
+	*dest[1].(*string) = user.Password
+	*dest[2].(*float64) = user.Balance
+	*dest[3].(*time.Time) = user.CreatedAt
 	m.index++
 	return nil
 }
@@ -202,17 +186,7 @@ var userRegisterTests = []struct {
 func TestUserRegister(t *testing.T) {
 	for _, test := range userRegisterTests {
 		t.Run(test.name, func(t *testing.T) {
-			serverConfig := config.DefaultServerConfig()
-			test.mockDB.MockPool.MockMethods(test.mockDB)
-			database := db.NewMockPostgresDB(serverConfig, test.mockDB.MockPool)
-
-			userService := service.NewUsersService(&database)
-			ordersService := service.NewOrdersService(&database)
-			jwtService := service.NewJwtService(&serverConfig)
-
-			handlers := CreateHandlers(userService, ordersService, jwtService)
-
-			r := CreateChiRouter(&handlers, &serverConfig, jwtService)
+			r := createTestRouter(&test.mockDB)
 
 			var bodyReader io.Reader
 			if test.request.body != "" {
@@ -365,17 +339,7 @@ var userLoginTests = []struct {
 func TestUserLogin(t *testing.T) {
 	for _, test := range userLoginTests {
 		t.Run(test.name, func(t *testing.T) {
-			serverConfig := config.DefaultServerConfig()
-			test.mockDB.MockPool.MockMethods(test.mockDB)
-			database := db.NewMockPostgresDB(serverConfig, test.mockDB.MockPool)
-
-			userService := service.NewUsersService(&database)
-			ordersService := service.NewOrdersService(&database)
-			jwtService := service.NewJwtService(&serverConfig)
-
-			handlers := CreateHandlers(userService, ordersService, jwtService)
-
-			r := CreateChiRouter(&handlers, &serverConfig, jwtService)
+			r := createTestRouter(&test.mockDB)
 
 			var bodyReader io.Reader
 			if test.request.body != "" {

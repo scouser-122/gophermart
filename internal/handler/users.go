@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -79,22 +78,10 @@ func (h *UsersHandler) HandleRegister(res http.ResponseWriter, req *http.Request
 
 	res.Header().Add("Authorization", fmt.Sprintf("Bearer %s", authToken))
 
-	response := models.CommonResponse{
-		Status:  "ok",
-		Message: "user successfully registered",
-	}
-	var buf bytes.Buffer
-	enc := json.NewEncoder(&buf)
-	if err := enc.Encode(response); err != nil {
-		logger.Error("error encoding response", zap.Error(err))
-		res.WriteHeader(http.StatusInternalServerError)
-		res.Write(models.NewErrorResponseBuffer(models.UnexpectedErrorMessage))
-		return
-	}
-
-	logger.Info(response.Message)
+	successMessage := "user successfully registered"
+	logger.Info(successMessage)
 	res.WriteHeader(http.StatusOK)
-	res.Write(buf.Bytes())
+	res.Write(models.NewSuccessResponseBuffer(successMessage))
 }
 
 func processCustomErrorRegister(customErr *models.CustomErr, res http.ResponseWriter) string {
@@ -163,22 +150,10 @@ func (h *UsersHandler) HandleLogin(res http.ResponseWriter, req *http.Request) {
 
 	res.Header().Add("Authorization", fmt.Sprintf("Bearer %s", authToken))
 
-	response := models.CommonResponse{
-		Status:  "ok",
-		Message: "successfully logged in",
-	}
-	var buf bytes.Buffer
-	enc := json.NewEncoder(&buf)
-	if err := enc.Encode(response); err != nil {
-		logger.Error("error encoding response", zap.Error(err))
-		res.WriteHeader(http.StatusInternalServerError)
-		res.Write(models.NewErrorResponseBuffer(models.UnexpectedErrorMessage))
-		return
-	}
-
-	logger.Info(response.Message)
+	successMessage := "successfully logged in"
+	logger.Info(successMessage)
 	res.WriteHeader(http.StatusOK)
-	res.Write(buf.Bytes())
+	res.Write(models.NewSuccessResponseBuffer(successMessage))
 }
 
 func processCustomErrorLogin(customErr *models.CustomErr, res http.ResponseWriter) string {
