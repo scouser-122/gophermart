@@ -3,6 +3,8 @@ package models
 import (
 	"bytes"
 	"encoding/json"
+	"strconv"
+	"time"
 )
 
 // CommonResponse defines common response structure with status and message
@@ -49,4 +51,29 @@ type UserBalanceResponse struct {
 	Current float32 `json:"current"`
 	// Withdrawn total withdrawn loyality points
 	Withdrawn float32 `json:"withdrawn"`
+}
+
+// WithdrawalResponse defines withdrawal data in response for user withdrawals request
+type WithdrawalResponse struct {
+	// Order is order ID
+	Order string
+	// Sum is withdrawal sum
+	Sum float32
+	// ProcessedAt time when order was processed
+	ProcessedAt time.Time
+}
+
+// MarshalJSON кастомная сериализация всей структуры
+func (w WithdrawalResponse) MarshalJSON() ([]byte, error) {
+	sum := strconv.FormatFloat(float64(w.Sum), 'f', -1, 32)
+	processedAt := w.ProcessedAt.Format("2006-01-02T15:04:05-07:00")
+	return json.Marshal(&struct {
+		Order       string `json:"order"`
+		Sum         string `json:"sum"`
+		ProcessedAt string `json:"processed_at"`
+	}{
+		Order:       w.Order,
+		Sum:         sum,
+		ProcessedAt: processedAt,
+	})
 }

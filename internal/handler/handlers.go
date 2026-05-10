@@ -59,6 +59,11 @@ func CreateHandlers(
 		URLPathPattern: "/api/user/balance/withdraw",
 		HandlerFn:      ordersHandler.HandleWithdrawBalance,
 	})
+	handlers = append(handlers, Handler{
+		Method:         http.MethodGet,
+		URLPathPattern: "/api/user/withdrawals",
+		HandlerFn:      ordersHandler.HandleGetUserWithdrawals,
+	})
 
 	return handlers
 }

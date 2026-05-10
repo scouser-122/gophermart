@@ -20,4 +20,7 @@ type OrderStorage interface {
 
 	// WithdrawBalanceForOrder withdraw user's loyalty points from balance for order with specified ID
 	WithdrawBalanceForOrder(ctx context.Context, orderID string, login string, sum float32) error
+
+	// WithdrawalsForUser returns slice of withdrawals data for specified user
+	WithdrawalsForUser(ctx context.Context, login string) ([]models.WithdrawalResponse, error)
 }

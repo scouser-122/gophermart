@@ -79,3 +79,18 @@ func (service *OrdersService) WithdrawBalanceForOrder(ctx context.Context, reque
 	}
 	return service.orderStorage.WithdrawBalanceForOrder(ctx, request.Order, login, request.Sum)
 }
+
+// WithdrawalsForUser returns slice of withdrawals data for specified user
+func (service *OrdersService) WithdrawalsForUser(ctx context.Context, login string) ([]models.WithdrawalResponse, error) {
+	logger := logger.GetLoggerFromContext(ctx)
+	withdrawals, err := service.orderStorage.WithdrawalsForUser(ctx, login)
+	if err != nil {
+		return []models.WithdrawalResponse{}, err
+	}
+	if len(withdrawals) == 0 {
+		err = &models.CustomErr{Code: models.CustomErrWithdrawalsListEmpty}
+		logger.Sugar().Error(err)
+		return withdrawals, err
+	}
+	return withdrawals, nil
+}

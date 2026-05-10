@@ -65,7 +65,7 @@ func (o Order) MarshalJSON() ([]byte, error) {
 		processedAt = ""
 	}
 	return json.Marshal(&struct {
-		ID          string `json:"id"`
+		ID          string `json:"number"`
 		Status      string `json:"status"`
 		UploadedAt  string `json:"uploaded_at"`
 		Accrual     string `json:"accrual,omitempty"`

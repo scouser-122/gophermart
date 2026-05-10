@@ -467,12 +467,8 @@ var userBalanceWithdrawTests = []struct {
 				mock.ExpectExec("UPDATE users SET balance = balance - .+ WHERE login = .+2 AND balance >= .+").
 					WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg()).
 					WillReturnResult(pgxmock.NewResult("UPDATE", 1))
-				mock.ExpectQuery("SELECT id FROM orders WHERE id = .+ AND user_login = .+").
-					WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg()).
-					WillReturnRows(mock.NewRows([]string{"id"}).
-						AddRow("4242424242424242"))
 				mock.ExpectExec("UPDATE orders SET withdrawn").
-					WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg()).
+					WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg()).
 					WillReturnResult(pgxmock.NewResult("UPDATE", 1))
 				mock.ExpectCommit()
 			},
@@ -555,9 +551,9 @@ var userBalanceWithdrawTests = []struct {
 				mock.ExpectExec("UPDATE users SET balance = balance - .+ WHERE login = .+2 AND balance >= .+").
 					WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg()).
 					WillReturnResult(pgxmock.NewResult("UPDATE", 1))
-				mock.ExpectQuery("SELECT id FROM orders WHERE id = .+ AND user_login = .+").
-					WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg()).
-					WillReturnError(pgx.ErrNoRows)
+				mock.ExpectExec("UPDATE orders SET withdrawn").
+					WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg()).
+					WillReturnResult(pgxmock.NewResult("UPDATE", 0))
 			},
 		},
 		want: want{

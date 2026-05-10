@@ -225,11 +225,71 @@ func processCustomErrorWithdrawBalance(customErr *models.CustomErr) (int, string
 		errMessage = "order ID invalid format"
 		status = http.StatusUnprocessableEntity
 	case models.CustomErrOrderNotFoundForWithdraw:
-		errMessage = "order with this ID is absent"
+		errMessage = "new or processing order with this ID is absent"
 		status = http.StatusUnprocessableEntity
 	case models.CustomErrUserBalanceNotEnough:
 		errMessage = "user balance not enough for withdrawal"
 		status = http.StatusPaymentRequired
+	default:
+		errMessage = models.UnexpectedErrorMessage
+		status = http.StatusInternalServerError
+	}
+	return status, errMessage
+}
+
+// HandleGetUserWithdrawals processes user withdrawals request
+func (h *OrdersHandler) HandleGetUserWithdrawals(res http.ResponseWriter, req *http.Request) {
+	res.Header().Set("content-type", "application/json")
+	logger := logger.GetLoggerFromContext(req.Context())
+
+	userLogin, ok := req.Context().Value(UserLoginContextKey).(string)
+	if !ok {
+		logger.Error("unauthorized request")
+		res.WriteHeader(http.StatusUnauthorized)
+		res.Write(models.NewErrorResponseBuffer("unauthorized request"))
+		return
+	}
+
+	withdrawals, err := h.ordersService.WithdrawalsForUser(req.Context(), userLogin)
+	if err != nil {
+		var customErr *models.CustomErr
+		if errors.As(err, &customErr) {
+			status, message := processCustomErrorGetUserWithdrawals(customErr)
+			res.WriteHeader(status)
+			if status >= http.StatusBadRequest {
+				res.Write(models.NewErrorResponseBuffer(message))
+			} else {
+				logger.Sugar().Info(message)
+				res.Write(models.NewSuccessResponseBuffer(message))
+			}
+			return
+		} else {
+			res.WriteHeader(http.StatusInternalServerError)
+			res.Write(models.NewErrorResponseBuffer(models.UnexpectedErrorMessage))
+			return
+		}
+	}
+
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	if err := enc.Encode(withdrawals); err != nil {
+		logger.Error("error encoding response ", zap.Error(err))
+		res.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	logger.Info("withdrawals list successfully obtained")
+	res.WriteHeader(http.StatusOK)
+	res.Write(buf.Bytes())
+}
+
+func processCustomErrorGetUserWithdrawals(customErr *models.CustomErr) (int, string) {
+	var status int
+	var errMessage string
+	switch customErr.Code {
+	case models.CustomErrWithdrawalsListEmpty:
+		errMessage = "withdrawals absent for this user"
+		status = http.StatusNoContent
 	default:
 		errMessage = models.UnexpectedErrorMessage
 		status = http.StatusInternalServerError

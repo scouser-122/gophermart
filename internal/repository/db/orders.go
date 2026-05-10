@@ -168,25 +168,17 @@ func (storage *PostgresOrderStorage) WithdrawBalanceForOrder(ctx context.Context
 		logger.Sugar().Error(err)
 		return err
 	}
-	row := tx.QueryRow(ctx, "SELECT id FROM orders WHERE id = $1 AND user_login = $2", orderID, login)
-	var foundOrder string
-	err = row.Scan(&foundOrder)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			err = &models.CustomErr{Code: models.CustomErrOrderNotFoundForWithdraw}
-			logger.Sugar().Error(err)
-			return err
-		} else {
-			logger.Sugar().Error(err)
-			return err
-		}
-	}
-	_, err = tx.Exec(
+	commandTag, err = tx.Exec(
 		ctx,
-		"UPDATE orders SET withdrawn = COALESCE(withdrawn, 0.0) + $1, processed_at = CURRENT_TIMESTAMP WHERE id = $2",
-		sum, orderID,
+		"UPDATE orders SET withdrawn = COALESCE(withdrawn, 0.0) + $1, processed_at = CURRENT_TIMESTAMP WHERE id = $2 AND user_login = $3 AND (status = 'NEW' OR status = 'PROCESSING')",
+		sum, orderID, login,
 	)
 	if err != nil {
+		logger.Sugar().Error(err)
+		return err
+	}
+	if commandTag.RowsAffected() == 0 {
+		err = &models.CustomErr{Code: models.CustomErrOrderNotFoundForWithdraw}
 		logger.Sugar().Error(err)
 		return err
 	}
@@ -196,4 +188,56 @@ func (storage *PostgresOrderStorage) WithdrawBalanceForOrder(ctx context.Context
 		return err
 	}
 	return nil
+}
+
+// WithdrawalsForUser returns slice of withdrawals data for specified user
+func (storage *PostgresOrderStorage) WithdrawalsForUser(ctx context.Context, login string) ([]models.WithdrawalResponse, error) {
+	logger := logger.GetLoggerFromContext(ctx)
+	result := []models.WithdrawalResponse{}
+
+	page := 0
+	limit := 10
+	for {
+		offset := page * limit
+		rows, err := storage.Database.Query(
+			ctx,
+			"SELECT id, withdrawn, processed_at FROM orders WHERE user_login = $1 AND withdrawn IS NOT NULL ORDER BY processed_at DESC LIMIT $2 OFFSET $3",
+			login, limit, offset,
+		)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				break
+			}
+			logger.Error(err.Error())
+			return []models.WithdrawalResponse{}, err
+		}
+		count := 0
+		for rows.Next() {
+			withdrawal := models.WithdrawalResponse{}
+			err = rows.Scan(&withdrawal.Order, &withdrawal.Sum, &withdrawal.ProcessedAt)
+			if err != nil {
+				if errors.Is(err, pgx.ErrNoRows) {
+					break
+				}
+				logger.Error(err.Error())
+				rows.Close()
+				return []models.WithdrawalResponse{}, err
+			}
+			result = append(result, withdrawal)
+			count++
+		}
+		err = rows.Err()
+		if err != nil {
+			logger.Error(err.Error())
+			rows.Close()
+			return []models.WithdrawalResponse{}, err
+		}
+		rows.Close()
+		if count == 0 {
+			break
+		}
+		page++
+	}
+
+	return result, nil
 }
