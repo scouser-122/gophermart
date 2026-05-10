@@ -3,7 +3,6 @@ package models
 import (
 	"bytes"
 	"encoding/json"
-	"strconv"
 	"time"
 )
 
@@ -65,15 +64,15 @@ type WithdrawalResponse struct {
 
 // MarshalJSON кастомная сериализация всей структуры
 func (w WithdrawalResponse) MarshalJSON() ([]byte, error) {
-	sum := strconv.FormatFloat(float64(w.Sum), 'f', -1, 32)
+	// sum := strconv.FormatFloat(float64(w.Sum), 'f', -1, 32)
 	processedAt := w.ProcessedAt.Format("2006-01-02T15:04:05-07:00")
 	return json.Marshal(&struct {
-		Order       string `json:"order"`
-		Sum         string `json:"sum"`
-		ProcessedAt string `json:"processed_at"`
+		Order       string  `json:"order"`
+		Sum         float32 `json:"sum"`
+		ProcessedAt string  `json:"processed_at"`
 	}{
 		Order:       w.Order,
-		Sum:         sum,
+		Sum:         w.Sum,
 		ProcessedAt: processedAt,
 	})
 }

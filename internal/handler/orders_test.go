@@ -336,7 +336,7 @@ var getUserOrdersTests = []struct {
 		want: want{
 			code:        http.StatusOK,
 			contentType: "application/json",
-			body:        `[{"id":"4242424242424242","status":"NEW","uploaded_at":"2026-05-10T12:24:45+03:00","accrual":"123"}]`,
+			body:        `[{"number":"4242424242424242","status":"NEW","uploaded_at":"2026-05-10T12:24:45+03:00","accrual":"123"}]`,
 		},
 	},
 	{
@@ -589,6 +589,147 @@ var userBalanceWithdrawTests = []struct {
 
 func TestUserBalanceWithdraw(t *testing.T) {
 	for _, test := range userBalanceWithdrawTests {
+		t.Run(test.name, func(t *testing.T) {
+			r := createTestRouter(&test.mockDB, "")
+
+			var bodyReader io.Reader
+			if test.request.body != "" {
+				jsonData := []byte(test.request.body)
+				bodyReader = bytes.NewBuffer(jsonData)
+			}
+
+			request := httptest.NewRequest(test.request.method, test.request.path, bodyReader)
+			request.Header.Add("Content-Type", test.request.contentType)
+			if len(test.request.headers) > 0 {
+				for k, v := range test.request.headers {
+					request.Header.Add(k, v)
+				}
+			}
+
+			// создаём новый Recorder
+			w := httptest.NewRecorder()
+
+			r.ServeHTTP(w, request)
+
+			res := w.Result()
+			// проверяем код ответа
+			assert.Equal(t, test.want.code, res.StatusCode)
+			assert.Equal(t, test.want.contentType, res.Header.Get("Content-Type"))
+			if res.StatusCode == http.StatusOK && test.want.body != "" {
+				bodyBytes, err := io.ReadAll(res.Body)
+				assert.Nil(t, err)
+				bodyString := string(bodyBytes)
+				assert.Equal(t, test.want.body, strings.Replace(bodyString, "\n", "", -1))
+			}
+			if len(test.want.headersToBePresent) > 0 {
+				for _, v := range test.want.headersToBePresent {
+					resHeader := res.Header.Get(v)
+					assert.NotEqual(t, "", resHeader, "Header %q is absent", v)
+				}
+			}
+			res.Body.Close()
+		})
+	}
+}
+
+var getUserWithdrawalsTest = []struct {
+	name    string
+	request request
+	mockDB  db.MockPostgresDBTestData
+	want    want
+}{
+	{
+		name: "positive test get user withdrawals",
+		request: request{
+			method: http.MethodGet,
+			path:   "/api/user/withdrawals",
+			headers: map[string]string{
+				"Authorization": fmt.Sprintf("Bearer %s", generateAuthToken("TestLogin")),
+			},
+		},
+		mockDB: db.MockPostgresDBTestData{
+			MockDBCalls: func(tt db.MockPostgresDBTestData) {
+				mock := tt.PgxPoolIface
+				mock.ExpectQuery("SELECT id, withdrawn, processed_at FROM orders").
+					WithArgs("TestLogin", pgxmock.AnyArg(), pgxmock.AnyArg()).
+					WillReturnRows(mock.NewRows([]string{"id", "withdrawn", "processed_at"}).
+						AddRow(
+							"4242424242424242",
+							123.5,
+							time.Date(2026, 5, 10, 12, 24, 45, 0, time.FixedZone("", 3*60*60))))
+				mock.ExpectQuery("SELECT id, withdrawn, processed_at FROM orders").
+					WithArgs("TestLogin", pgxmock.AnyArg(), pgxmock.AnyArg()).
+					WillReturnError(pgx.ErrNoRows)
+			},
+		},
+		want: want{
+			code:        http.StatusOK,
+			contentType: "application/json",
+			body:        `[{"order":"4242424242424242","sum":123.5,"processed_at":"2026-05-10T12:24:45+03:00"}]`,
+		},
+	},
+	{
+		name: "positive test get user withdrawals no data",
+		request: request{
+			method: http.MethodGet,
+			path:   "/api/user/withdrawals",
+			headers: map[string]string{
+				"Authorization": fmt.Sprintf("Bearer %s", generateAuthToken("TestLogin")),
+			},
+		},
+		mockDB: db.MockPostgresDBTestData{
+			MockDBCalls: func(tt db.MockPostgresDBTestData) {
+				mock := tt.PgxPoolIface
+				mock.ExpectQuery("SELECT id, withdrawn, processed_at FROM orders").
+					WithArgs("TestLogin", pgxmock.AnyArg(), pgxmock.AnyArg()).
+					WillReturnError(pgx.ErrNoRows)
+			},
+		},
+		want: want{
+			code:        http.StatusNoContent,
+			contentType: "application/json",
+		},
+	},
+	{
+		name: "negative test get user withdrawals unauthorized",
+		request: request{
+			method: http.MethodGet,
+			path:   "/api/user/withdrawals",
+		},
+		mockDB: db.MockPostgresDBTestData{
+			MockDBCalls: func(tt db.MockPostgresDBTestData) {},
+		},
+		want: want{
+			code:        http.StatusUnauthorized,
+			contentType: "application/json",
+		},
+	},
+	{
+		name: "negative test get user withdrawals internal server error",
+		request: request{
+			method: http.MethodGet,
+			path:   "/api/user/withdrawals",
+			headers: map[string]string{
+				"Authorization": fmt.Sprintf("Bearer %s", generateAuthToken("TestLogin")),
+			},
+		},
+		mockDB: db.MockPostgresDBTestData{
+			MockDBCalls: func(tt db.MockPostgresDBTestData) {
+				mock := tt.PgxPoolIface
+				mock.ExpectQuery("SELECT id, withdrawn, processed_at FROM orders").
+					WithArgs("TestLogin", pgxmock.AnyArg(), pgxmock.AnyArg()).
+					WillReturnError(fmt.Errorf("some error"))
+			},
+		},
+		want: want{
+			code:        http.StatusInternalServerError,
+			contentType: "application/json",
+		},
+	},
+}
+
+func TestGetUserWithdrawals(t *testing.T) {
+	for _, test := range getUserWithdrawalsTest {
 		t.Run(test.name, func(t *testing.T) {
 			r := createTestRouter(&test.mockDB, "")
 
