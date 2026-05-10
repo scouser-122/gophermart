@@ -17,4 +17,7 @@ type OrderStorage interface {
 
 	// GetWithdrawnForUser return total withdrawn points from all orders for specified user
 	GetWithdrawnForUser(ctx context.Context, login string) (float32, error)
+
+	// WithdrawBalanceForOrder withdraw user's loyalty points from balance for order with specified ID
+	WithdrawBalanceForOrder(ctx context.Context, orderID string, login string, sum float32) error
 }

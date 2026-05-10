@@ -37,6 +37,8 @@ const (
 	CustomErrAccrualOrderNotRegistered         = 10011
 	CustomErrAccrualTooManyRequests            = 10012
 	CustomErrAccrualInternalServerError        = 10013
+	CustomErrOrderNotFoundForWithdraw          = 10014
+	CustomErrUserBalanceNotEnough              = 10015
 )
 
 // UnexpectedErrorMessage message for unexpecter app errors, usualy leads to returning InternalServerError

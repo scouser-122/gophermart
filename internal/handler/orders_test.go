@@ -443,3 +443,195 @@ func TestGetUserOrders(t *testing.T) {
 		})
 	}
 }
+
+var userBalanceWithdrawTests = []struct {
+	name    string
+	request request
+	mockDB  db.MockPostgresDBTestData
+	want    want
+}{
+	{
+		name: "positive test user balance withdraw",
+		request: request{
+			method: http.MethodPost,
+			path:   "/api/user/balance/withdraw",
+			headers: map[string]string{
+				"Authorization": fmt.Sprintf("Bearer %s", generateAuthToken("TestLogin")),
+			},
+			body: `{"order":"4242424242424242","sum":200.5}`,
+		},
+		mockDB: db.MockPostgresDBTestData{
+			MockDBCalls: func(tt db.MockPostgresDBTestData) {
+				mock := tt.PgxPoolIface
+				mock.ExpectBegin()
+				mock.ExpectExec("UPDATE users SET balance = balance - .+ WHERE login = .+2 AND balance >= .+").
+					WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg()).
+					WillReturnResult(pgxmock.NewResult("UPDATE", 1))
+				mock.ExpectQuery("SELECT id FROM orders WHERE id = .+ AND user_login = .+").
+					WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg()).
+					WillReturnRows(mock.NewRows([]string{"id"}).
+						AddRow("4242424242424242"))
+				mock.ExpectExec("UPDATE orders SET withdrawn").
+					WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg()).
+					WillReturnResult(pgxmock.NewResult("UPDATE", 1))
+				mock.ExpectCommit()
+			},
+		},
+		want: want{
+			code:        http.StatusOK,
+			contentType: "application/json",
+		},
+	},
+	{
+		name: "negative test user balance withdraw unauthorized",
+		request: request{
+			method: http.MethodGet,
+			path:   "/api/user/orders",
+		},
+		mockDB: db.MockPostgresDBTestData{
+			MockDBCalls: func(tt db.MockPostgresDBTestData) {},
+		},
+		want: want{
+			code:        http.StatusUnauthorized,
+			contentType: "application/json",
+		},
+	},
+	{
+		name: "negative test user balance withdraw balance not enough",
+		request: request{
+			method: http.MethodPost,
+			path:   "/api/user/balance/withdraw",
+			headers: map[string]string{
+				"Authorization": fmt.Sprintf("Bearer %s", generateAuthToken("TestLogin")),
+			},
+			body: `{"order":"4242424242424242","sum":200.5}`,
+		},
+		mockDB: db.MockPostgresDBTestData{
+			MockDBCalls: func(tt db.MockPostgresDBTestData) {
+				mock := tt.PgxPoolIface
+				mock.ExpectBegin()
+				mock.ExpectExec("UPDATE users SET balance = balance - .+ WHERE login = .+2 AND balance >= .+").
+					WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg()).
+					WillReturnResult(pgxmock.NewResult("UPDATE", 0))
+			},
+		},
+		want: want{
+			code:        http.StatusPaymentRequired,
+			contentType: "application/json",
+		},
+	},
+	{
+		name: "negative test user balance withdraw incorrect order number format",
+		request: request{
+			method: http.MethodPost,
+			path:   "/api/user/balance/withdraw",
+			body:   `{"order":"incorrect_oder_format_123","sum":200.5}`,
+			headers: map[string]string{
+				"Authorization": fmt.Sprintf("Bearer %s", generateAuthToken("TestLogin")),
+			},
+		},
+		mockDB: db.MockPostgresDBTestData{
+			MockDBCalls: func(tt db.MockPostgresDBTestData) {},
+		},
+		want: want{
+			code:        http.StatusUnprocessableEntity,
+			contentType: "application/json",
+		},
+	},
+	{
+		name: "negative test user balance withdraw order is absent",
+		request: request{
+			method: http.MethodPost,
+			path:   "/api/user/balance/withdraw",
+			headers: map[string]string{
+				"Authorization": fmt.Sprintf("Bearer %s", generateAuthToken("TestLogin")),
+			},
+			body: `{"order":"4242424242424242","sum":200.5}`,
+		},
+		mockDB: db.MockPostgresDBTestData{
+			MockDBCalls: func(tt db.MockPostgresDBTestData) {
+				mock := tt.PgxPoolIface
+				mock.ExpectBegin()
+				mock.ExpectExec("UPDATE users SET balance = balance - .+ WHERE login = .+2 AND balance >= .+").
+					WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg()).
+					WillReturnResult(pgxmock.NewResult("UPDATE", 1))
+				mock.ExpectQuery("SELECT id FROM orders WHERE id = .+ AND user_login = .+").
+					WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg()).
+					WillReturnError(pgx.ErrNoRows)
+			},
+		},
+		want: want{
+			code:        http.StatusUnprocessableEntity,
+			contentType: "application/json",
+		},
+	},
+	{
+		name: "negative test user balance withdraw internal server error",
+		request: request{
+			method: http.MethodPost,
+			path:   "/api/user/balance/withdraw",
+			headers: map[string]string{
+				"Authorization": fmt.Sprintf("Bearer %s", generateAuthToken("TestLogin")),
+			},
+			body: `{"order":"4242424242424242","sum":200.5}`,
+		},
+		mockDB: db.MockPostgresDBTestData{
+			MockDBCalls: func(tt db.MockPostgresDBTestData) {
+				mock := tt.PgxPoolIface
+				mock.ExpectBegin()
+				mock.ExpectExec("UPDATE users SET balance = balance - .+ WHERE login = .+2 AND balance >= .+").
+					WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg()).
+					WillReturnError(fmt.Errorf("some error"))
+			},
+		},
+		want: want{
+			code:        http.StatusInternalServerError,
+			contentType: "application/json",
+		},
+	},
+}
+
+func TestUserBalanceWithdraw(t *testing.T) {
+	for _, test := range userBalanceWithdrawTests {
+		t.Run(test.name, func(t *testing.T) {
+			r := createTestRouter(&test.mockDB, "")
+
+			var bodyReader io.Reader
+			if test.request.body != "" {
+				jsonData := []byte(test.request.body)
+				bodyReader = bytes.NewBuffer(jsonData)
+			}
+
+			request := httptest.NewRequest(test.request.method, test.request.path, bodyReader)
+			request.Header.Add("Content-Type", test.request.contentType)
+			if len(test.request.headers) > 0 {
+				for k, v := range test.request.headers {
+					request.Header.Add(k, v)
+				}
+			}
+
+			// создаём новый Recorder
+			w := httptest.NewRecorder()
+
+			r.ServeHTTP(w, request)
+
+			res := w.Result()
+			// проверяем код ответа
+			assert.Equal(t, test.want.code, res.StatusCode)
+			assert.Equal(t, test.want.contentType, res.Header.Get("Content-Type"))
+			if res.StatusCode == http.StatusOK && test.want.body != "" {
+				bodyBytes, err := io.ReadAll(res.Body)
+				assert.Nil(t, err)
+				bodyString := string(bodyBytes)
+				assert.Equal(t, test.want.body, strings.Replace(bodyString, "\n", "", -1))
+			}
+			if len(test.want.headersToBePresent) > 0 {
+				for _, v := range test.want.headersToBePresent {
+					resHeader := res.Header.Get(v)
+					assert.NotEqual(t, "", resHeader, "Header %q is absent", v)
+				}
+			}
+			res.Body.Close()
+		})
+	}
+}

@@ -174,3 +174,65 @@ func processCustomErrorGetUserOrders(customErr *models.CustomErr) (int, string) 
 	}
 	return status, errMessage
 }
+
+// HandleWithdrawBalance processes withdraw balance for order request
+func (h *OrdersHandler) HandleWithdrawBalance(res http.ResponseWriter, req *http.Request) {
+	res.Header().Set("content-type", "application/json")
+	logger := logger.GetLoggerFromContext(req.Context())
+
+	userLogin, ok := req.Context().Value(UserLoginContextKey).(string)
+	if !ok {
+		logger.Error("unauthorized request")
+		res.WriteHeader(http.StatusUnauthorized)
+		res.Write(models.NewErrorResponseBuffer("unauthorized request"))
+		return
+	}
+
+	dec := json.NewDecoder(req.Body)
+	var requestBody models.WithdrawBalanceRequest
+	if err := dec.Decode(&requestBody); err != nil {
+		logger.Error("error decoding request ", zap.Error(err))
+		res.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	err := h.ordersService.WithdrawBalanceForOrder(req.Context(), &requestBody, userLogin)
+	if err != nil {
+		var customErr *models.CustomErr
+		if errors.As(err, &customErr) {
+			status, message := processCustomErrorWithdrawBalance(customErr)
+			res.WriteHeader(status)
+			res.Write(models.NewErrorResponseBuffer(message))
+			return
+		} else {
+			res.WriteHeader(http.StatusInternalServerError)
+			res.Write(models.NewErrorResponseBuffer(models.UnexpectedErrorMessage))
+			return
+		}
+	}
+
+	successMessage := "sum withdrawed successfully"
+	logger.Info(successMessage)
+	res.WriteHeader(http.StatusOK)
+	res.Write(models.NewSuccessResponseBuffer(successMessage))
+}
+
+func processCustomErrorWithdrawBalance(customErr *models.CustomErr) (int, string) {
+	var status int
+	var errMessage string
+	switch customErr.Code {
+	case models.CustomErrOrderIDInvalidFormat:
+		errMessage = "order ID invalid format"
+		status = http.StatusUnprocessableEntity
+	case models.CustomErrOrderNotFoundForWithdraw:
+		errMessage = "order with this ID is absent"
+		status = http.StatusUnprocessableEntity
+	case models.CustomErrUserBalanceNotEnough:
+		errMessage = "user balance not enough for withdrawal"
+		status = http.StatusPaymentRequired
+	default:
+		errMessage = models.UnexpectedErrorMessage
+		status = http.StatusInternalServerError
+	}
+	return status, errMessage
+}

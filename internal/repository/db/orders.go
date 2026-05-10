@@ -63,9 +63,13 @@ func (storage *PostgresOrderStorage) AddOrder(ctx context.Context, order *models
 		}
 	}
 	if dbOrder.UserLogin == userLogin {
-		return &models.CustomErr{Code: models.CustomErrOrderAlreadyUploaded}
+		err = &models.CustomErr{Code: models.CustomErrOrderAlreadyUploaded}
+		logger.Sugar().Error(err)
+		return err
 	} else {
-		return &models.CustomErr{Code: models.CustomErrOrderAlreadyUploadedByAnotherUser}
+		err = &models.CustomErr{Code: models.CustomErrOrderAlreadyUploadedByAnotherUser}
+		logger.Sugar().Error(err)
+		return err
 	}
 }
 
@@ -139,4 +143,57 @@ func (storage *PostgresOrderStorage) GetWithdrawnForUser(ctx context.Context, lo
 		return 0.0, nil
 	}
 	return *result, nil
+}
+
+// WithdrawBalanceForOrder withdraw user's loyalty points from balance for order with specified ID
+func (storage *PostgresOrderStorage) WithdrawBalanceForOrder(ctx context.Context, orderID string, login string, sum float32) error {
+	logger := logger.GetLoggerFromContext(ctx)
+	tx, err := storage.Database.Begin(ctx)
+	if err != nil {
+		logger.Sugar().Error(err)
+		return err
+	}
+	defer tx.Rollback(ctx)
+	commandTag, err := tx.Exec(
+		ctx,
+		"UPDATE users SET balance = balance - $1 WHERE login = $2 AND balance >= $1",
+		sum, login,
+	)
+	if err != nil {
+		logger.Sugar().Error(err)
+		return err
+	}
+	if commandTag.RowsAffected() == 0 {
+		err = &models.CustomErr{Code: models.CustomErrUserBalanceNotEnough}
+		logger.Sugar().Error(err)
+		return err
+	}
+	row := tx.QueryRow(ctx, "SELECT id FROM orders WHERE id = $1 AND user_login = $2", orderID, login)
+	var foundOrder string
+	err = row.Scan(&foundOrder)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			err = &models.CustomErr{Code: models.CustomErrOrderNotFoundForWithdraw}
+			logger.Sugar().Error(err)
+			return err
+		} else {
+			logger.Sugar().Error(err)
+			return err
+		}
+	}
+	_, err = tx.Exec(
+		ctx,
+		"UPDATE orders SET withdrawn = COALESCE(withdrawn, 0.0) + $1, processed_at = CURRENT_TIMESTAMP WHERE id = $2",
+		sum, orderID,
+	)
+	if err != nil {
+		logger.Sugar().Error(err)
+		return err
+	}
+	err = tx.Commit(ctx)
+	if err != nil {
+		logger.Sugar().Error(err)
+		return err
+	}
+	return nil
 }

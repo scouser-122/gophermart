@@ -5,6 +5,7 @@ import (
 
 	luhnmod10 "github.com/luhnmod10/go"
 
+	"github.com/scouser-122/gophermart/internal/logger"
 	"github.com/scouser-122/gophermart/internal/models"
 	"github.com/scouser-122/gophermart/internal/repository"
 	"github.com/scouser-122/gophermart/internal/repository/db"
@@ -30,16 +31,12 @@ func NewOrdersService(
 
 // Upload runs upload process for specified order
 func (service *OrdersService) Upload(ctx context.Context, orderID string, userLogin string) (*models.Order, error) {
-	if orderID == "" {
-		return nil, &models.CustomErr{
-			Code: models.CustomErrOrderIDInvalidFormat,
-		}
-	}
+	logger := logger.GetLoggerFromContext(ctx)
 	isValid := luhnmod10.Valid(orderID)
 	if !isValid {
-		return nil, &models.CustomErr{
-			Code: models.CustomErrOrderIDInvalidFormat,
-		}
+		err := &models.CustomErr{Code: models.CustomErrOrderIDInvalidFormat}
+		logger.Sugar().Error(err)
+		return nil, err
 	}
 	order, err := service.accrualService.GetOrderData(ctx, orderID)
 	if err != nil {
@@ -69,4 +66,16 @@ func (service *OrdersService) GetUserOrders(ctx context.Context, userLogin strin
 // GetWithdrawnForUser return total withdrawn points from all orders for specified user
 func (service *OrdersService) GetWithdrawnForUser(ctx context.Context, login string) (float32, error) {
 	return service.orderStorage.GetWithdrawnForUser(ctx, login)
+}
+
+// WithdrawBalanceForOrder withdraw user's loyalty points from balance for order with specified ID
+func (service *OrdersService) WithdrawBalanceForOrder(ctx context.Context, request *models.WithdrawBalanceRequest, login string) error {
+	logger := logger.GetLoggerFromContext(ctx)
+	isValid := luhnmod10.Valid(request.Order)
+	if !isValid {
+		err := &models.CustomErr{Code: models.CustomErrOrderIDInvalidFormat}
+		logger.Sugar().Error(err)
+		return err
+	}
+	return service.orderStorage.WithdrawBalanceForOrder(ctx, request.Order, login, request.Sum)
 }
