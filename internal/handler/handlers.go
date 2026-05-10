@@ -37,6 +37,11 @@ func CreateHandlers(
 		URLPathPattern: "/api/user/login",
 		HandlerFn:      usersHandler.HandleLogin,
 	})
+	handlers = append(handlers, Handler{
+		Method:         http.MethodGet,
+		URLPathPattern: "/api/user/balance",
+		HandlerFn:      usersHandler.HandleUsersBalance,
+	})
 
 	ordersHandler := NewOrdersHandler(ordersService, jwtService)
 	handlers = append(handlers, Handler{

@@ -10,13 +10,15 @@ import (
 
 // UsersService service to work with users
 type UsersService struct {
-	userStorage repository.UserStorage
+	userStorage   repository.UserStorage
+	ordersService *OrdersService
 }
 
 // NewUsersService creates new UsersService instance
-func NewUsersService(userStorage repository.UserStorage) *UsersService {
+func NewUsersService(userStorage repository.UserStorage, ordersService *OrdersService) *UsersService {
 	service := UsersService{}
 	service.userStorage = userStorage
+	service.ordersService = ordersService
 	return &service
 }
 
@@ -62,4 +64,19 @@ func (service *UsersService) Login(ctx context.Context, user *models.User) error
 		return &models.CustomErr{Code: models.CustomErrUserLoginFailed}
 	}
 	return nil
+}
+
+// GetUserBalance return user's loyalty points balance and total withdrawn points
+func (service *UsersService) GetUserBalance(ctx context.Context, login string) (*models.UserBalanceResponse, error) {
+	result := models.UserBalanceResponse{}
+	var err error
+	result.Current, err = service.userStorage.GetUserBalance(ctx, login)
+	if err != nil {
+		return nil, err
+	}
+	result.Withdrawn, err = service.ordersService.GetWithdrawnForUser(ctx, login)
+	if err != nil {
+		return nil, err
+	}
+	return &result, nil
 }

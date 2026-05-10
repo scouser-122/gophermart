@@ -120,3 +120,23 @@ func (storage *PostgresOrderStorage) GetUserOrders(ctx context.Context, userLogi
 
 	return result, nil
 }
+
+// GetWithdrawnForUser return total withdrawn points from all orders for specified user
+func (storage *PostgresOrderStorage) GetWithdrawnForUser(ctx context.Context, login string) (float32, error) {
+	logger := logger.GetLoggerFromContext(ctx)
+	var result *float32
+	row, err := storage.Database.QueryRow(ctx, "SELECT SUM(withdrawn) FROM orders WHERE user_login = $1", login)
+	if err != nil {
+		logger.Sugar().Error(err)
+		return 0.0, err
+	}
+	err = row.Scan(&result)
+	if err != nil {
+		logger.Sugar().Error(err)
+		return 0.0, err
+	}
+	if result == nil {
+		return 0.0, nil
+	}
+	return *result, nil
+}

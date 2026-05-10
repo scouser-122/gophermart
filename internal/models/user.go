@@ -11,7 +11,7 @@ type User struct {
 	Password string `json:"password" db:"password"`
 
 	// Balance contains user's balance
-	Balance float64 `db:"balance"`
+	Balance float32 `db:"balance"`
 
 	// CreatedAt defines user's registration date and time
 	CreatedAt time.Time `db:"created_at"`

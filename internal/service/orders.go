@@ -65,3 +65,8 @@ func (service *OrdersService) GetUserOrders(ctx context.Context, userLogin strin
 	}
 	return orders, nil
 }
+
+// GetWithdrawnForUser return total withdrawn points from all orders for specified user
+func (service *OrdersService) GetWithdrawnForUser(ctx context.Context, login string) (float32, error) {
+	return service.orderStorage.GetWithdrawnForUser(ctx, login)
+}

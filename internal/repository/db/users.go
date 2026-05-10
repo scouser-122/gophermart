@@ -52,3 +52,20 @@ func (storage *PostgresUserStorage) GetUser(ctx context.Context, login string) (
 	}
 	return &dbUser, nil
 }
+
+// GetUserBalance return user's loyalty points balance and total withdrawn points
+func (storage *PostgresUserStorage) GetUserBalance(ctx context.Context, login string) (float32, error) {
+	logger := logger.GetLoggerFromContext(ctx)
+	var result float32
+	row, err := storage.Database.QueryRow(ctx, "SELECT balance FROM users WHERE login = $1", login)
+	if err != nil {
+		logger.Sugar().Error(err)
+		return 0.0, err
+	}
+	err = row.Scan(&result)
+	if err != nil {
+		logger.Sugar().Error(err)
+		return 0.0, err
+	}
+	return result, nil
+}

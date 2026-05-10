@@ -14,4 +14,7 @@ type OrderStorage interface {
 
 	// GetUserOrders returns slice of orders for user with specified login
 	GetUserOrders(ctx context.Context, userLogin string) ([]*models.Order, error)
+
+	// GetWithdrawnForUser return total withdrawn points from all orders for specified user
+	GetWithdrawnForUser(ctx context.Context, login string) (float32, error)
 }

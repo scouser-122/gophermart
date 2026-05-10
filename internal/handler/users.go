@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -174,4 +175,37 @@ func processCustomErrorLogin(customErr *models.CustomErr, res http.ResponseWrite
 		res.WriteHeader(http.StatusInternalServerError)
 	}
 	return errMessage
+}
+
+// HandleUsersBalance processes get user balance request
+func (h *UsersHandler) HandleUsersBalance(res http.ResponseWriter, req *http.Request) {
+	res.Header().Set("content-type", "application/json")
+	logger := logger.GetLoggerFromContext(req.Context())
+
+	userLogin, ok := req.Context().Value(UserLoginContextKey).(string)
+	if !ok {
+		logger.Error("unauthorized request")
+		res.WriteHeader(http.StatusUnauthorized)
+		res.Write(models.NewErrorResponseBuffer("unauthorized request"))
+		return
+	}
+
+	usersBalance, err := h.usersService.GetUserBalance(req.Context(), userLogin)
+	if err != nil {
+		res.WriteHeader(http.StatusInternalServerError)
+		res.Write(models.NewErrorResponseBuffer(models.UnexpectedErrorMessage))
+		return
+	}
+
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	if err := enc.Encode(usersBalance); err != nil {
+		logger.Sugar().Error(err)
+		res.WriteHeader(http.StatusInternalServerError)
+		res.Write(models.NewErrorResponseBuffer(models.UnexpectedErrorMessage))
+		return
+	}
+	logger.Info("users balance successfully obtained")
+	res.WriteHeader(http.StatusOK)
+	res.Write(buf.Bytes())
 }

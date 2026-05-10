@@ -8,7 +8,8 @@ import (
 // CommonResponse defines common response structure with status and message
 type CommonResponse struct {
 	// Status response status
-	Status  string `json:"status"`
+	Status string `json:"status"`
+	// Message response message
 	Message string `json:"message,omitempty"`
 }
 
@@ -40,4 +41,12 @@ func NewSuccessResponseBuffer(message string) []byte {
 		return []byte{}
 	}
 	return buf.Bytes()
+}
+
+// UserBalanceResponse defines response structure for get user balance request
+type UserBalanceResponse struct {
+	// Current currenct balance
+	Current float32 `json:"current"`
+	// Withdrawn total withdrawn loyality points
+	Withdrawn float32 `json:"withdrawn"`
 }

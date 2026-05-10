@@ -37,8 +37,11 @@ type Order struct {
 	// UploadedAt time when order was uploaded (saved in DB)
 	UploadedAt time.Time `json:"uploaded_at" db:"uploaded_at"`
 
-	// Order accrual
-	Accrual *int64 `json:"accrual,omitempty" db:"accrual"`
+	// Accrual for order
+	Accrual *float32 `json:"accrual,omitempty" db:"accrual"`
+
+	// Withdrawn sum for order
+	Withdrawn *float32 `json:"-" db:"withdrawn"`
 
 	// ProcessedAt time when order was processed
 	ProcessedAt *time.Time `json:"processed_at" db:"processed_at"`
@@ -51,7 +54,7 @@ type Order struct {
 func (o Order) MarshalJSON() ([]byte, error) {
 	var accrual string
 	if o.Accrual != nil {
-		accrual = strconv.FormatInt(*o.Accrual, 10)
+		accrual = strconv.FormatFloat(float64(*o.Accrual), 'f', -1, 32)
 	} else {
 		accrual = ""
 	}
@@ -76,6 +79,7 @@ func (o Order) MarshalJSON() ([]byte, error) {
 	})
 }
 
+// UnmarshalJSON кастомная десериализация всей структуры
 func (o *Order) UnmarshalJSON(data []byte) error {
 	type Alias Order
 	var aux Alias

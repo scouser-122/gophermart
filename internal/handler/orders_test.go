@@ -11,69 +11,13 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/pashagolub/pgxmock/v5"
-	"github.com/pkg/errors"
 	"github.com/scouser-122/gophermart/internal/config"
 	"github.com/scouser-122/gophermart/internal/models"
 	"github.com/scouser-122/gophermart/internal/repository/db"
 	"github.com/scouser-122/gophermart/internal/service"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
-
-// Мок для pgx.Rows
-type MockPostgresRowsOrder struct {
-	mock.Mock
-	orders []models.Order
-	index  int
-}
-
-func (m *MockPostgresRowsOrder) Next() bool {
-	return m.index < len(m.orders)
-}
-
-func (m *MockPostgresRowsOrder) Scan(dest ...interface{}) error {
-	if m.index >= len(m.orders) {
-		return errors.New("no more rows")
-	}
-
-	order := m.orders[m.index]
-	*dest[0].(*string) = order.ID
-	*dest[1].(*models.OrderStatus) = order.Status
-	*dest[2].(*time.Time) = order.UploadedAt
-	*dest[3].(**int64) = order.Accrual
-	*dest[4].(*string) = order.UserLogin
-	m.index++
-	return nil
-}
-
-func (m *MockPostgresRowsOrder) Close()          {}
-func (m *MockPostgresRowsOrder) Err() error      { return nil }
-func (m *MockPostgresRowsOrder) Conn() *pgx.Conn { return &pgx.Conn{} }
-func (m *MockPostgresRowsOrder) FieldDescriptions() []pgconn.FieldDescription {
-	return []pgconn.FieldDescription{
-		{Name: "id"},
-		{Name: "status"},
-		{Name: "uploaded_at"},
-		{Name: "accrual"},
-		{Name: "user_login"},
-	}
-}
-func (m *MockPostgresRowsOrder) RawValues() [][]byte {
-	return [][]byte{
-		[]byte("id"),
-		[]byte("status"),
-		[]byte("uploaded_at"),
-		[]byte("accrual"),
-		[]byte("user_login"),
-	}
-}
-func (m *MockPostgresRowsOrder) Values() ([]any, error) { return nil, fmt.Errorf("test err") }
-
-func (m *MockPostgresRowsOrder) CommandTag() pgconn.CommandTag {
-	return pgconn.NewCommandTag("SELECT 3")
-}
 
 func generateAuthToken(login string) string {
 	serverConfig := config.DefaultServerConfig()
@@ -151,7 +95,7 @@ var orderUploadTests = []struct {
 				mock.ExpectQuery("SELECT .+ FROM orders WHERE id").
 					WithArgs("4242424242424242").
 					WillReturnRows(mock.NewRows([]string{"id", "status", "uploaded_at", "accrual", "user_login"}).
-						AddRow("4242424242424242", models.NewOrder, time.Now(), Ptr(int64(500)), "TestLogin"))
+						AddRow("4242424242424242", models.NewOrder, time.Now(), Ptr(float32(500)), "TestLogin"))
 			},
 		},
 		want: want{
@@ -219,7 +163,7 @@ var orderUploadTests = []struct {
 				mock.ExpectQuery("SELECT .+ FROM orders WHERE id").
 					WithArgs("4242424242424242").
 					WillReturnRows(mock.NewRows([]string{"id", "status", "uploaded_at", "accrual", "user_login"}).
-						AddRow("4242424242424242", models.NewOrder, time.Now(), Ptr(int64(500)), "TestLogin2"))
+						AddRow("4242424242424242", models.NewOrder, time.Now(), Ptr(float32(500)), "TestLogin2"))
 			},
 		},
 		want: want{
@@ -382,7 +326,7 @@ var getUserOrdersTests = []struct {
 							"4242424242424242",
 							models.NewOrder,
 							time.Date(2026, 5, 10, 12, 24, 45, 0, time.FixedZone("", 3*60*60)),
-							Ptr(int64(123)),
+							Ptr(float32(123)),
 							"TestLogin"))
 				mock.ExpectQuery("SELECT .+ FROM orders WHERE user_login").
 					WithArgs("TestLogin", pgxmock.AnyArg(), pgxmock.AnyArg()).

@@ -42,10 +42,11 @@ func createTestRouter(mockDB *db.MockPostgresDBTestData, accrualServiceURL strin
 	database := db.NewPgxMockDB(serverConfig, mock)
 
 	accrualService := service.NewAccrualService(&serverConfig)
-	usersStorage := &db.PostgresUserStorage{Database: &database}
-	userService := service.NewUsersService(usersStorage)
 	orderStorage := &db.PostgresOrderStorage{Database: &database}
 	ordersService := service.NewOrdersService(orderStorage, accrualService)
+	usersStorage := &db.PostgresUserStorage{Database: &database}
+	userService := service.NewUsersService(usersStorage, ordersService)
+
 	jwtService := service.NewJwtService(&serverConfig)
 
 	handlers := CreateHandlers(userService, ordersService, jwtService)
