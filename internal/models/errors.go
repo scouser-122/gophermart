@@ -33,6 +33,10 @@ const (
 	CustomErrOrderAlreadyUploaded              = 10007
 	CustomErrOrderAlreadyUploadedByAnotherUser = 10008
 	CustomErrOrderIDInvalidFormat              = 10009
+	CustomErrUserOrdersListEmpty               = 10010
+	CustomErrAccrualOrderNotRegistered         = 10011
+	CustomErrAccrualTooManyRequests            = 10012
+	CustomErrAccrualInternalServerError        = 10013
 )
 
 // UnexpectedErrorMessage message for unexpecter app errors, usualy leads to returning InternalServerError

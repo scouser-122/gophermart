@@ -44,6 +44,11 @@ func CreateHandlers(
 		URLPathPattern: "/api/user/orders",
 		HandlerFn:      ordersHandler.HandleUploadOrder,
 	})
+	handlers = append(handlers, Handler{
+		Method:         http.MethodGet,
+		URLPathPattern: "/api/user/orders",
+		HandlerFn:      ordersHandler.HandleGetUserOrders,
+	})
 
 	return handlers
 }

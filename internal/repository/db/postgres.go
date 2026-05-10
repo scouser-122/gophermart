@@ -224,6 +224,9 @@ func (db *PostgresDatabase) Begin(ctx context.Context) (pgx.Tx, error) {
 	return tx, err
 }
 
+// DbTransactionKey key value to store DB transaction in context
+const DbTransactionKey string = "dbTransaction"
+
 func isNil(i interface{}) bool {
 	if i == nil {
 		return true

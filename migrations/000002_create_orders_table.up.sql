@@ -3,6 +3,7 @@ CREATE TABLE orders (
     status varchar(20) NOT NULL,
     uploaded_at timestamp NOT NULL,
     accrual bigint NULL DEFAULT NULL,
+    processed_at timestamp NULL,
     user_login varchar(255) NOT NULL,
     PRIMARY KEY(id),
     FOREIGN KEY (user_login) REFERENCES users (login)

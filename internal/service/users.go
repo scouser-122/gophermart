@@ -5,7 +5,6 @@ import (
 
 	"github.com/scouser-122/gophermart/internal/models"
 	"github.com/scouser-122/gophermart/internal/repository"
-	"github.com/scouser-122/gophermart/internal/repository/db"
 	"github.com/scouser-122/gophermart/internal/utils"
 )
 
@@ -15,12 +14,9 @@ type UsersService struct {
 }
 
 // NewUsersService creates new UsersService instance
-func NewUsersService(database *db.PostgresDatabase) *UsersService {
+func NewUsersService(userStorage repository.UserStorage) *UsersService {
 	service := UsersService{}
-	dbStorage := db.PostgresUserStorage{
-		Database: database,
-	}
-	service.userStorage = &dbStorage
+	service.userStorage = userStorage
 	return &service
 }
 

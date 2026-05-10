@@ -12,16 +12,19 @@ import (
 
 // OrdersService service to work with orders
 type OrdersService struct {
-	orderStorage repository.OrderStorage
+	database       *db.PostgresDatabase
+	orderStorage   repository.OrderStorage
+	accrualService *AccrualService
 }
 
 // NewOrdersService creates new OrdersService instance
-func NewOrdersService(database *db.PostgresDatabase) *OrdersService {
+func NewOrdersService(
+	orderStorage repository.OrderStorage,
+	accrualService *AccrualService,
+) *OrdersService {
 	service := OrdersService{}
-	dbStorage := db.PostgresOrderStorage{
-		Database: database,
-	}
-	service.orderStorage = &dbStorage
+	service.orderStorage = orderStorage
+	service.accrualService = accrualService
 	return &service
 }
 
@@ -38,9 +41,27 @@ func (service *OrdersService) Upload(ctx context.Context, orderID string, userLo
 			Code: models.CustomErrOrderIDInvalidFormat,
 		}
 	}
-	order, err := service.orderStorage.AddOrder(ctx, orderID, userLogin)
+	order, err := service.accrualService.GetOrderData(ctx, orderID)
+	if err != nil {
+		return nil, err
+	}
+	err = service.orderStorage.AddOrder(ctx, order, userLogin)
 	if err != nil {
 		return nil, err
 	}
 	return order, nil
+}
+
+// GetUserOrders returns slice of orders for user with specified login
+func (service *OrdersService) GetUserOrders(ctx context.Context, userLogin string) ([]*models.Order, error) {
+	orders, err := service.orderStorage.GetUserOrders(ctx, userLogin)
+	if err != nil {
+		return []*models.Order{}, err
+	}
+	if len(orders) == 0 {
+		return []*models.Order{}, &models.CustomErr{
+			Code: models.CustomErrUserOrdersListEmpty,
+		}
+	}
+	return orders, nil
 }

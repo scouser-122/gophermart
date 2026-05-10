@@ -26,18 +26,22 @@ type ServerConfig struct {
 
 	// JwtTokenExp specifies time in hours for JWT token generation
 	JwtTokenExp int `env:"JWT_TOKEN_EXP"`
+
+	// AccrualSystemAddress adddress of accrual system for orders
+	AccrualSystemAddress string `env:"JWT_TOKEN_EXACCRUAL_SYSTEM_ADDRESSP"`
 }
 
 // DefaultServerConfig specified default config for server app
 // which may be redefined by command line args or environrment variables
 func DefaultServerConfig() ServerConfig {
 	return ServerConfig{
-		RunAddr:          "localhost:8080",
-		LogLevel:         "info",
-		Environment:      "dev",
-		DBDataSourceName: "postgres://postgres:password@localhost:5432/mydb?sslmode=disable",
-		JwtSecretKey:     "defaultSecretKey",
-		JwtTokenExp:      3,
+		RunAddr:              "localhost:8080",
+		LogLevel:             "info",
+		Environment:          "dev",
+		DBDataSourceName:     "postgres://postgres:password@localhost:5432/mydb?sslmode=disable",
+		JwtSecretKey:         "defaultSecretKey",
+		JwtTokenExp:          3,
+		AccrualSystemAddress: "http://localhost:8081",
 	}
 }
 
@@ -47,6 +51,7 @@ func ParseFlags(config *ServerConfig) {
 	flag.StringVar(&config.LogLevel, "l", "info", "logging level")
 	flag.StringVar(&config.Environment, "e", "dev", "environment")
 	flag.StringVar(&config.DBDataSourceName, "d", "", "URI for database connection")
+	flag.StringVar(&config.AccrualSystemAddress, "r", "http://localhost:8081", "accrual system address")
 	flag.Parse()
 }
 

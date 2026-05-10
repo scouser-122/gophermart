@@ -34,7 +34,7 @@ func NewUsersHandler(
 // HandleRegister processes user registration request
 func (h *UsersHandler) HandleRegister(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("content-type", "application/json")
-	logger := logger.GetLogger(req.Context())
+	logger := logger.GetLoggerFromContext(req.Context())
 
 	bodyBuf, err := io.ReadAll(req.Body)
 	if err != nil {
@@ -57,11 +57,10 @@ func (h *UsersHandler) HandleRegister(res http.ResponseWriter, req *http.Request
 		var customErr *models.CustomErr
 		if errors.As(err, &customErr) {
 			errMessage := processCustomErrorRegister(customErr, res)
-			logger.Error(errMessage, zap.Error(err))
+			logger.Error(customErr.Error())
 			res.Write(models.NewErrorResponseBuffer(errMessage))
 			return
 		} else {
-			logger.Error(models.UnexpectedErrorMessage, zap.Error(err))
 			res.WriteHeader(http.StatusInternalServerError)
 			res.Write(models.NewErrorResponseBuffer(models.UnexpectedErrorMessage))
 			return
@@ -106,7 +105,7 @@ func processCustomErrorRegister(customErr *models.CustomErr, res http.ResponseWr
 // HandleLogin processes user login request
 func (h *UsersHandler) HandleLogin(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("content-type", "application/json")
-	logger := logger.GetLogger(req.Context())
+	logger := logger.GetLoggerFromContext(req.Context())
 
 	bodyBuf, err := io.ReadAll(req.Body)
 	if err != nil {
@@ -129,11 +128,10 @@ func (h *UsersHandler) HandleLogin(res http.ResponseWriter, req *http.Request) {
 		var customErr *models.CustomErr
 		if errors.As(err, &customErr) {
 			errMessage := processCustomErrorLogin(customErr, res)
-			logger.Error(errMessage, zap.Error(err))
+			logger.Error(customErr.Error())
 			res.Write(models.NewErrorResponseBuffer(errMessage))
 			return
 		} else {
-			logger.Error(models.UnexpectedErrorMessage, zap.Error(err))
 			res.WriteHeader(http.StatusInternalServerError)
 			res.Write(models.NewErrorResponseBuffer(models.UnexpectedErrorMessage))
 			return

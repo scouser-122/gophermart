@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"bytes"
+	"encoding/json"
 	"io"
 	"net/http"
 
@@ -32,7 +34,7 @@ func NewOrdersHandler(
 // HandleUploadOrder processes order upload request
 func (h *OrdersHandler) HandleUploadOrder(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("content-type", "application/json")
-	logger := logger.GetLogger(req.Context())
+	logger := logger.GetLoggerFromContext(req.Context())
 
 	reqContentType := req.Header.Get("Content-Type")
 	if reqContentType != "text/plain" {
@@ -54,7 +56,7 @@ func (h *OrdersHandler) HandleUploadOrder(res http.ResponseWriter, req *http.Req
 
 	userLogin, ok := req.Context().Value(UserLoginContextKey).(string)
 	if !ok {
-		logger.Error("unauthorized request", zap.Error(err))
+		logger.Error("unauthorized request")
 		res.WriteHeader(http.StatusUnauthorized)
 		res.Write(models.NewErrorResponseBuffer("unauthorized request"))
 		return
@@ -75,7 +77,6 @@ func (h *OrdersHandler) HandleUploadOrder(res http.ResponseWriter, req *http.Req
 			}
 			return
 		} else {
-			logger.Error(models.UnexpectedErrorMessage, zap.Error(err))
 			res.WriteHeader(http.StatusInternalServerError)
 			res.Write(models.NewErrorResponseBuffer(models.UnexpectedErrorMessage))
 			return
@@ -101,6 +102,72 @@ func processCustomErrorOrderUpload(customErr *models.CustomErr) (int, string) {
 	case models.CustomErrOrderAlreadyUploadedByAnotherUser:
 		errMessage = "order already uploaded by another user"
 		status = http.StatusConflict
+	case models.CustomErrAccrualOrderNotRegistered:
+	case models.CustomErrAccrualTooManyRequests:
+	case models.CustomErrAccrualInternalServerError:
+		errMessage = models.UnexpectedErrorMessage
+		status = http.StatusInternalServerError
+	default:
+		errMessage = models.UnexpectedErrorMessage
+		status = http.StatusInternalServerError
+	}
+	return status, errMessage
+}
+
+// HandleGetUserOrders processes user orders request
+func (h *OrdersHandler) HandleGetUserOrders(res http.ResponseWriter, req *http.Request) {
+	res.Header().Set("content-type", "application/json")
+	logger := logger.GetLoggerFromContext(req.Context())
+
+	userLogin, ok := req.Context().Value(UserLoginContextKey).(string)
+	if !ok {
+		logger.Error("unauthorized request")
+		res.WriteHeader(http.StatusUnauthorized)
+		res.Write(models.NewErrorResponseBuffer("unauthorized request"))
+		return
+	}
+
+	orders, err := h.ordersService.GetUserOrders(req.Context(), userLogin)
+	if err != nil {
+		var customErr *models.CustomErr
+		if errors.As(err, &customErr) {
+			status, message := processCustomErrorGetUserOrders(customErr)
+			res.WriteHeader(status)
+			if status >= http.StatusBadRequest {
+				logger.Error(message, zap.Error(err))
+				res.Write(models.NewErrorResponseBuffer(message))
+			} else {
+				logger.Sugar().Info(message)
+				res.Write(models.NewSuccessResponseBuffer(message))
+			}
+			return
+		} else {
+			res.WriteHeader(http.StatusInternalServerError)
+			res.Write(models.NewErrorResponseBuffer(models.UnexpectedErrorMessage))
+			return
+		}
+	}
+
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	if err := enc.Encode(orders); err != nil {
+		logger.Error("error encoding response ", zap.Error(err))
+		res.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	logger.Info("orders list successfully obtained")
+	res.WriteHeader(http.StatusOK)
+	res.Write(buf.Bytes())
+}
+
+func processCustomErrorGetUserOrders(customErr *models.CustomErr) (int, string) {
+	var status int
+	var errMessage string
+	switch customErr.Code {
+	case models.CustomErrUserOrdersListEmpty:
+		errMessage = "orders absent for this user"
+		status = http.StatusNoContent
 	default:
 		errMessage = models.UnexpectedErrorMessage
 		status = http.StatusInternalServerError

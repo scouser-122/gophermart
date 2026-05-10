@@ -2,6 +2,7 @@ package handler
 
 import (
 	"github.com/go-chi/chi/v5"
+	"github.com/pashagolub/pgxmock/v5"
 	"github.com/scouser-122/gophermart/internal/config"
 	"github.com/scouser-122/gophermart/internal/repository/db"
 	"github.com/scouser-122/gophermart/internal/service"
@@ -22,16 +23,36 @@ type request struct {
 	headers     map[string]string
 }
 
-func createTestRouter(mockDB *db.MockPostgresDBTestData) *chi.Mux {
-	serverConfig := config.DefaultServerConfig()
-	mockDB.MockPool.MockMethods(*mockDB)
-	database := db.NewMockPostgresDB(serverConfig, mockDB.MockPool)
+type accrualResponse struct {
+	status int
+	body   string
+	err    error
+}
 
-	userService := service.NewUsersService(&database)
-	ordersService := service.NewOrdersService(&database)
+func createTestRouter(mockDB *db.MockPostgresDBTestData, accrualServiceURL string) *chi.Mux {
+	serverConfig := config.DefaultServerConfig()
+	serverConfig.AccrualSystemAddress = accrualServiceURL
+	mock, err := pgxmock.NewPool()
+	if err != nil {
+		panic(err)
+	}
+	defer mock.Close()
+	mockDB.PgxPoolIface = mock
+	mockDB.MockDBCalls(*mockDB)
+	database := db.NewPgxMockDB(serverConfig, mock)
+
+	accrualService := service.NewAccrualService(&serverConfig)
+	usersStorage := &db.PostgresUserStorage{Database: &database}
+	userService := service.NewUsersService(usersStorage)
+	orderStorage := &db.PostgresOrderStorage{Database: &database}
+	ordersService := service.NewOrdersService(orderStorage, accrualService)
 	jwtService := service.NewJwtService(&serverConfig)
 
 	handlers := CreateHandlers(userService, ordersService, jwtService)
 
 	return CreateChiRouter(&handlers, &serverConfig, jwtService)
+}
+
+func Ptr[T any](v T) *T {
+	return &v
 }

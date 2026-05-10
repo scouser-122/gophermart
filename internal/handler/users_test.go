@@ -12,6 +12,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/pashagolub/pgxmock/v5"
 	"github.com/pkg/errors"
 	"github.com/scouser-122/gophermart/internal/models"
 	"github.com/scouser-122/gophermart/internal/repository/db"
@@ -84,20 +85,14 @@ var userRegisterTests = []struct {
 			body:        `{"login":"TestLogin","password":"TestPassword"}`,
 		},
 		mockDB: db.MockPostgresDBTestData{
-			MockPool: &db.MockPostgresPool{
-				MockMethods: func(tt db.MockPostgresDBTestData) {
-					tt.MockPool.On("Query", mock.Anything, mock.Anything, mock.Anything).
-						Return(
-							&MockPostgresRowsUser{
-								users: []models.User{},
-							},
-							nil,
-						)
-					tt.MockPool.On("Exec", mock.Anything, mock.Anything, mock.Anything).Return(
-						pgconn.NewCommandTag("INSERT 1"), nil,
-					)
-					tt.MockPool.On("Ping", mock.Anything).Return(nil)
-				},
+			MockDBCalls: func(tt db.MockPostgresDBTestData) {
+				mock := tt.PgxPoolIface
+				mock.ExpectQuery("SELECT .+ FROM users WHERE login").
+					WithArgs("TestLogin").
+					WillReturnError(pgx.ErrNoRows)
+				mock.ExpectExec("insert into users .+").
+					WithArgs("TestLogin", pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg()).
+					WillReturnResult(pgxmock.NewResult("INSERT", 1))
 			},
 		},
 		want: want{
@@ -116,11 +111,7 @@ var userRegisterTests = []struct {
 			body:        `{"login":"TestLogin"}`,
 		},
 		mockDB: db.MockPostgresDBTestData{
-			MockPool: &db.MockPostgresPool{
-				MockMethods: func(tt db.MockPostgresDBTestData) {
-					tt.MockPool.On("Ping", mock.Anything).Return(nil)
-				},
-			},
+			MockDBCalls: func(tt db.MockPostgresDBTestData) {},
 		},
 		want: want{
 			code:        http.StatusBadRequest,
@@ -136,19 +127,12 @@ var userRegisterTests = []struct {
 			body:        `{"login":"TestLogin","password":"TestPassword"}`,
 		},
 		mockDB: db.MockPostgresDBTestData{
-			MockPool: &db.MockPostgresPool{
-				MockMethods: func(tt db.MockPostgresDBTestData) {
-					tt.MockPool.On("Query", mock.Anything, mock.Anything, mock.Anything).
-						Return(
-							&MockPostgresRowsUser{
-								users: []models.User{
-									{Login: "TestLogin", Password: "TestPassword", Balance: 0.0, CreatedAt: time.Now()},
-								},
-							},
-							nil,
-						)
-					tt.MockPool.On("Ping", mock.Anything).Return(nil)
-				},
+			MockDBCalls: func(tt db.MockPostgresDBTestData) {
+				mock := tt.PgxPoolIface
+				mock.ExpectQuery("SELECT .+ FROM users WHERE login").
+					WithArgs("TestLogin").
+					WillReturnRows(mock.NewRows([]string{"login", "password", "balance", "created_at"}).
+						AddRow("TestLogin", "TestPassword", 0.0, time.Now()))
 			},
 		},
 		want: want{
@@ -165,15 +149,11 @@ var userRegisterTests = []struct {
 			body:        `{"login":"TestLogin","password":"TestPassword"}`,
 		},
 		mockDB: db.MockPostgresDBTestData{
-			MockPool: &db.MockPostgresPool{
-				MockMethods: func(tt db.MockPostgresDBTestData) {
-					tt.MockPool.On("Query", mock.Anything, mock.Anything, mock.Anything).
-						Return(
-							&MockPostgresRowsUser{},
-							fmt.Errorf("DB request failed"),
-						)
-					tt.MockPool.On("Ping", mock.Anything).Return(nil)
-				},
+			MockDBCalls: func(tt db.MockPostgresDBTestData) {
+				mock := tt.PgxPoolIface
+				mock.ExpectQuery("SELECT .+ FROM users WHERE login").
+					WithArgs("TestLogin").
+					WillReturnError(fmt.Errorf("some error"))
 			},
 		},
 		want: want{
@@ -186,7 +166,7 @@ var userRegisterTests = []struct {
 func TestUserRegister(t *testing.T) {
 	for _, test := range userRegisterTests {
 		t.Run(test.name, func(t *testing.T) {
-			r := createTestRouter(&test.mockDB)
+			r := createTestRouter(&test.mockDB, "")
 
 			var bodyReader io.Reader
 			if test.request.body != "" {
@@ -238,19 +218,12 @@ var userLoginTests = []struct {
 			body:        `{"login":"TestLogin","password":"TestPassword"}`,
 		},
 		mockDB: db.MockPostgresDBTestData{
-			MockPool: &db.MockPostgresPool{
-				MockMethods: func(tt db.MockPostgresDBTestData) {
-					tt.MockPool.On("Query", mock.Anything, mock.Anything, mock.Anything).
-						Return(
-							&MockPostgresRowsUser{
-								users: []models.User{
-									{Login: "TestLogin", Password: "7bcf9d89298f1bfae16fa02ed6b61908fd2fa8de45dd8e2153a3c47300765328", Balance: 0.0, CreatedAt: time.Now()},
-								},
-							},
-							nil,
-						)
-					tt.MockPool.On("Ping", mock.Anything).Return(nil)
-				},
+			MockDBCalls: func(tt db.MockPostgresDBTestData) {
+				mock := tt.PgxPoolIface
+				mock.ExpectQuery("SELECT .+ FROM users WHERE login").
+					WithArgs("TestLogin").
+					WillReturnRows(mock.NewRows([]string{"login", "password", "balance", "created_at"}).
+						AddRow("TestLogin", "7bcf9d89298f1bfae16fa02ed6b61908fd2fa8de45dd8e2153a3c47300765328", 0.0, time.Now()))
 			},
 		},
 		want: want{
@@ -269,11 +242,7 @@ var userLoginTests = []struct {
 			body:        `{"login":"TestLogin"}`,
 		},
 		mockDB: db.MockPostgresDBTestData{
-			MockPool: &db.MockPostgresPool{
-				MockMethods: func(tt db.MockPostgresDBTestData) {
-					tt.MockPool.On("Ping", mock.Anything).Return(nil)
-				},
-			},
+			MockDBCalls: func(tt db.MockPostgresDBTestData) {},
 		},
 		want: want{
 			code:        http.StatusBadRequest,
@@ -289,19 +258,12 @@ var userLoginTests = []struct {
 			body:        `{"login":"TestLogin","password":"TestPassword"}`,
 		},
 		mockDB: db.MockPostgresDBTestData{
-			MockPool: &db.MockPostgresPool{
-				MockMethods: func(tt db.MockPostgresDBTestData) {
-					tt.MockPool.On("Query", mock.Anything, mock.Anything, mock.Anything).
-						Return(
-							&MockPostgresRowsUser{
-								users: []models.User{
-									{Login: "TestLogin", Password: "7bcf9d89298f1bfae16fa02ed6b61908", Balance: 0.0, CreatedAt: time.Now()},
-								},
-							},
-							nil,
-						)
-					tt.MockPool.On("Ping", mock.Anything).Return(nil)
-				},
+			MockDBCalls: func(tt db.MockPostgresDBTestData) {
+				mock := tt.PgxPoolIface
+				mock.ExpectQuery("SELECT .+ FROM users WHERE login").
+					WithArgs("TestLogin").
+					WillReturnRows(mock.NewRows([]string{"login", "password", "balance", "created_at"}).
+						AddRow("TestLogin", "7bcf9d89298f1bfae16fa02ed6b6", 0.0, time.Now()))
 			},
 		},
 		want: want{
@@ -318,15 +280,11 @@ var userLoginTests = []struct {
 			body:        `{"login":"TestLogin","password":"TestPassword"}`,
 		},
 		mockDB: db.MockPostgresDBTestData{
-			MockPool: &db.MockPostgresPool{
-				MockMethods: func(tt db.MockPostgresDBTestData) {
-					tt.MockPool.On("Query", mock.Anything, mock.Anything, mock.Anything).
-						Return(
-							&MockPostgresRowsUser{},
-							fmt.Errorf("DB request failed"),
-						)
-					tt.MockPool.On("Ping", mock.Anything).Return(nil)
-				},
+			MockDBCalls: func(tt db.MockPostgresDBTestData) {
+				mock := tt.PgxPoolIface
+				mock.ExpectQuery("SELECT .+ FROM users WHERE login").
+					WithArgs("TestLogin").
+					WillReturnError(fmt.Errorf("some error"))
 			},
 		},
 		want: want{
@@ -339,7 +297,7 @@ var userLoginTests = []struct {
 func TestUserLogin(t *testing.T) {
 	for _, test := range userLoginTests {
 		t.Run(test.name, func(t *testing.T) {
-			r := createTestRouter(&test.mockDB)
+			r := createTestRouter(&test.mockDB, "")
 
 			var bodyReader io.Reader
 			if test.request.body != "" {

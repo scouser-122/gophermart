@@ -46,8 +46,8 @@ func NewZapLogger(level string, environment string) *zap.Logger {
 // LoggerKey key value to store logger in context
 const LoggerKey string = "logger"
 
-// GetLogger takes logger from context or returns global zap logger
-func GetLogger(ctx context.Context) *zap.Logger {
+// GetLoggerFromContext takes logger from context or returns global zap logger
+func GetLoggerFromContext(ctx context.Context) *zap.Logger {
 	if logger, ok := ctx.Value(LoggerKey).(*zap.Logger); ok {
 		return logger
 	}
