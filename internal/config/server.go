@@ -28,7 +28,7 @@ type ServerConfig struct {
 	JwtTokenExp int `env:"JWT_TOKEN_EXP"`
 
 	// AccrualSystemAddress adddress of accrual system for orders
-	AccrualSystemAddress string `env:"JWT_TOKEN_EXACCRUAL_SYSTEM_ADDRESSP"`
+	AccrualSystemAddress string `env:"ACCRUAL_SYSTEM_ADDRESS"`
 }
 
 // DefaultServerConfig specified default config for server app
