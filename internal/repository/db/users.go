@@ -23,11 +23,13 @@ func (storage *PostgresUserStorage) AddUser(ctx context.Context, user *models.Us
 	var dbUser models.User
 	err := storage.Database.Select(ctx, &dbUser, "SELECT * FROM users WHERE login = $1", user.Login)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-		logger.Sugar().Error(zap.Error(err))
+		logger.Sugar().Error(err)
 		return nil, err
 	}
 	if dbUser.Login != "" {
-		return nil, &models.CustomErr{Code: models.CustomErrUserLoginBusy}
+		err = &models.CustomErr{Code: models.CustomErrUserLoginBusy}
+		logger.Sugar().Error(err)
+		return nil, err
 	}
 	user.CreatedAt = time.Now()
 	_, err = storage.Database.Insert(ctx, user)
@@ -48,7 +50,9 @@ func (storage *PostgresUserStorage) GetUser(ctx context.Context, login string) (
 		return nil, err
 	}
 	if dbUser.Login == "" {
-		return nil, &models.CustomErr{Code: models.CustomErrUserNotFound}
+		err = &models.CustomErr{Code: models.CustomErrUserNotFound}
+		logger.Sugar().Error(err)
+		return nil, err
 	}
 	return &dbUser, nil
 }

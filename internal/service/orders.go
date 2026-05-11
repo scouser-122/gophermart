@@ -57,12 +57,15 @@ func (service *OrdersService) Upload(ctx context.Context, orderID string, userLo
 
 // GetUserOrders returns slice of orders for user with specified login
 func (service *OrdersService) GetUserOrders(ctx context.Context, userLogin string) ([]*models.Order, error) {
+	logger := logger.GetLoggerFromContext(ctx)
 	orders, err := service.orderStorage.GetUserOrders(ctx, userLogin)
 	if err != nil {
 		return []*models.Order{}, err
 	}
 	if len(orders) == 0 {
-		return []*models.Order{}, &models.CustomErr{Code: models.CustomErrUserOrdersListEmpty}
+		err = &models.CustomErr{Code: models.CustomErrUserOrdersListEmpty}
+		logger.Sugar().Error(err)
+		return []*models.Order{}, err
 	}
 	for i, o := range orders {
 		accrualOrder, _ := service.accrualService.GetOrderData(ctx, o.ID)

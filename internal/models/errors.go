@@ -29,7 +29,7 @@ const (
 	CustomErrUserLoginInvalidFormat            = 10003
 	CustomErrUserPasswordInvalidFormat         = 10004
 	CustomErrUserNotFound                      = 10005
-	CustomErrUserLoginFailed                   = 10006
+	CustomErrUserLoginPasswordNotMatch         = 10006
 	CustomErrOrderAlreadyUploaded              = 10007
 	CustomErrOrderAlreadyUploadedByAnotherUser = 10008
 	CustomErrOrderIDInvalidFormat              = 10009

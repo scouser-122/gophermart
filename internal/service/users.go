@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 
+	"github.com/scouser-122/gophermart/internal/logger"
 	"github.com/scouser-122/gophermart/internal/models"
 	"github.com/scouser-122/gophermart/internal/repository"
 	"github.com/scouser-122/gophermart/internal/utils"
@@ -24,16 +25,20 @@ func NewUsersService(userStorage repository.UserStorage, ordersService *OrdersSe
 
 // Register runs registration process for specified user
 func (service *UsersService) Register(ctx context.Context, user *models.User) (*models.User, error) {
+	logger := logger.GetLoggerFromContext(ctx)
 	if user.Login == "" {
-		return nil, &models.CustomErr{
-			Code: models.CustomErrUserLoginInvalidFormat,
-		}
+		err := &models.CustomErr{Code: models.CustomErrUserLoginInvalidFormat}
+		logger.Sugar().Error(err)
+		return nil, err
 	}
 	if user.Password == "" {
-		return nil, &models.CustomErr{Code: models.CustomErrUserPasswordInvalidFormat}
+		err := &models.CustomErr{Code: models.CustomErrUserPasswordInvalidFormat}
+		logger.Sugar().Error(err)
+		return nil, err
 	}
 	passwordHash, err := utils.CountSha256Sum(user.Password)
 	if err != nil {
+		logger.Sugar().Error(err)
 		return nil, err
 	}
 	user.Password = passwordHash
@@ -46,11 +51,16 @@ func (service *UsersService) Register(ctx context.Context, user *models.User) (*
 
 // Login runs login process for specified user
 func (service *UsersService) Login(ctx context.Context, user *models.User) error {
+	logger := logger.GetLoggerFromContext(ctx)
 	if user.Login == "" {
-		return &models.CustomErr{Code: models.CustomErrUserLoginInvalidFormat}
+		err := &models.CustomErr{Code: models.CustomErrUserLoginInvalidFormat}
+		logger.Sugar().Error(err)
+		return err
 	}
 	if user.Password == "" {
-		return &models.CustomErr{Code: models.CustomErrUserPasswordInvalidFormat}
+		err := &models.CustomErr{Code: models.CustomErrUserPasswordInvalidFormat}
+		logger.Sugar().Error(err)
+		return err
 	}
 	storedUser, err := service.userStorage.GetUser(ctx, user.Login)
 	if err != nil {
@@ -61,7 +71,9 @@ func (service *UsersService) Login(ctx context.Context, user *models.User) error
 		return err
 	}
 	if passwordHash != storedUser.Password {
-		return &models.CustomErr{Code: models.CustomErrUserLoginFailed}
+		err := &models.CustomErr{Code: models.CustomErrUserLoginPasswordNotMatch}
+		logger.Sugar().Error(err)
+		return err
 	}
 	return nil
 }

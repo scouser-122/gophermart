@@ -58,11 +58,12 @@ func (h *UsersHandler) HandleRegister(res http.ResponseWriter, req *http.Request
 		var customErr *models.CustomErr
 		if errors.As(err, &customErr) {
 			errMessage := processCustomErrorRegister(customErr, res)
-			logger.Error(customErr.Error())
+			logger.Info(errMessage)
 			res.Write(models.NewErrorResponseBuffer(errMessage))
 			return
 		} else {
 			res.WriteHeader(http.StatusInternalServerError)
+			logger.Info(models.UnexpectedErrorMessage)
 			res.Write(models.NewErrorResponseBuffer(models.UnexpectedErrorMessage))
 			return
 		}
@@ -167,7 +168,7 @@ func processCustomErrorLogin(customErr *models.CustomErr, res http.ResponseWrite
 	case models.CustomErrUserPasswordInvalidFormat:
 		errMessage = "login invalid format"
 		res.WriteHeader(http.StatusBadRequest)
-	case models.CustomErrUserLoginFailed:
+	case models.CustomErrUserLoginPasswordNotMatch:
 		errMessage = "login invalid format"
 		res.WriteHeader(http.StatusUnauthorized)
 	default:
