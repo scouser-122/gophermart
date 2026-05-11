@@ -40,12 +40,17 @@ func (service *OrdersService) Upload(ctx context.Context, orderID string, userLo
 		return nil, err
 	}
 	order, err := service.accrualService.GetOrderData(ctx, orderID)
-	if err != nil {
-		return nil, err
-	}
-	err = service.orderStorage.AddOrder(ctx, order, userLogin)
-	if err != nil {
-		return nil, err
+	if order != nil {
+		err = service.orderStorage.AddOrder(ctx, order, userLogin)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		order = &models.Order{ID: orderID, Status: models.NewOrder}
+		err = service.orderStorage.AddOrder(ctx, order, userLogin)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return order, nil
 }
