@@ -36,7 +36,7 @@ type ServerConfig struct {
 func DefaultServerConfig() ServerConfig {
 	return ServerConfig{
 		RunAddr:              "localhost:8080",
-		LogLevel:             "debug",
+		LogLevel:             "info",
 		Environment:          "dev",
 		DBDataSourceName:     "postgres://postgres:password@localhost:5432/mydb?sslmode=disable",
 		JwtSecretKey:         "defaultSecretKey",
@@ -48,7 +48,7 @@ func DefaultServerConfig() ServerConfig {
 // ParseFlags parses command line args for server configuration
 func ParseFlags(config *ServerConfig) {
 	flag.StringVar(&config.RunAddr, "a", "localhost:8080", "address and port to run server")
-	flag.StringVar(&config.LogLevel, "l", "debug", "logging level")
+	flag.StringVar(&config.LogLevel, "l", "info", "logging level")
 	flag.StringVar(&config.Environment, "e", "dev", "environment")
 	flag.StringVar(&config.DBDataSourceName, "d", "", "URI for database connection")
 	flag.StringVar(&config.AccrualSystemAddress, "r", "http://localhost:8081", "accrual system address")
