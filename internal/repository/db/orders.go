@@ -124,12 +124,32 @@ func (storage *PostgresOrderStorage) GetUserOrders(ctx context.Context, userLogi
 	return result, nil
 }
 
+// GetOrder returns order for specified ID or nil id order was not uploaded
+func (storage *PostgresOrderStorage) GetOrder(ctx context.Context, orderID string) (*models.Order, error) {
+	logger := logger.GetLoggerFromContext(ctx)
+	var dbOrder models.Order
+	err := storage.Database.Select(ctx, &dbOrder, "SELECT * FROM orders WHERE id = $1", orderID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		logger.Sugar().Error(err)
+		return nil, err
+	}
+	return &dbOrder, nil
+}
+
 // UpdateOrder updates order data and increments user's balance if accrual present
 func (storage *PostgresOrderStorage) UpdateOrder(ctx context.Context, order *models.Order) (*models.Order, error) {
 	logger := logger.GetLoggerFromContext(ctx)
 	var dbOrder models.Order
 	err := storage.Database.Select(ctx, &dbOrder, "SELECT * FROM orders WHERE id = $1", order.ID)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			err = &models.CustomErr{Code: models.CustomErrOrderNotFoundForWithdraw}
+			logger.Sugar().Error(err)
+			return nil, err
+		}
 		logger.Sugar().Error(err)
 		return nil, err
 	}

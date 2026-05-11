@@ -509,6 +509,15 @@ var userBalanceWithdrawTests = []struct {
 							time.Date(2026, 5, 10, 12, 24, 45, 0, time.FixedZone("", 3*60*60)),
 							nil,
 							"TestLogin"))
+				mock.ExpectQuery("SELECT .+ FROM orders WHERE id").
+					WithArgs("4242424242424242").
+					WillReturnRows(mock.NewRows([]string{"id", "status", "uploaded_at", "accrual", "user_login"}).
+						AddRow(
+							"4242424242424242",
+							models.ProcessingOrder,
+							time.Date(2026, 5, 10, 12, 24, 45, 0, time.FixedZone("", 3*60*60)),
+							nil,
+							"TestLogin"))
 				mock.ExpectBegin()
 				mock.ExpectExec("UPDATE orders SET").
 					WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg()).
@@ -572,6 +581,15 @@ var userBalanceWithdrawTests = []struct {
 							time.Date(2026, 5, 10, 12, 24, 45, 0, time.FixedZone("", 3*60*60)),
 							nil,
 							"TestLogin"))
+				mock.ExpectQuery("SELECT .+ FROM orders WHERE id").
+					WithArgs("4242424242424242").
+					WillReturnRows(mock.NewRows([]string{"id", "status", "uploaded_at", "accrual", "user_login"}).
+						AddRow(
+							"4242424242424242",
+							models.ProcessingOrder,
+							time.Date(2026, 5, 10, 12, 24, 45, 0, time.FixedZone("", 3*60*60)),
+							nil,
+							"TestLogin"))
 				mock.ExpectBegin()
 				mock.ExpectExec("UPDATE orders SET").
 					WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg()).
@@ -604,28 +622,6 @@ var userBalanceWithdrawTests = []struct {
 		accrualResponse: accrualResponse{
 			status: http.StatusOK,
 			body:   `{"order":"4242424242424242","status":"RPOCESSING","accrual":500}`,
-		},
-		mockDB: db.MockPostgresDBTestData{
-			MockDBCalls: func(tt db.MockPostgresDBTestData) {},
-		},
-		want: want{
-			code:        http.StatusUnprocessableEntity,
-			contentType: "application/json",
-		},
-	},
-	{
-		name: "negative test user balance withdraw order is absent",
-		request: request{
-			method: http.MethodPost,
-			path:   "/api/user/balance/withdraw",
-			headers: map[string]string{
-				"Authorization": fmt.Sprintf("Bearer %s", generateAuthToken("TestLogin")),
-			},
-			body: `{"order":"4242424242424242","sum":200.5}`,
-		},
-		accrualResponse: accrualResponse{
-			status: http.StatusNoContent,
-			body:   `{}`,
 		},
 		mockDB: db.MockPostgresDBTestData{
 			MockDBCalls: func(tt db.MockPostgresDBTestData) {},

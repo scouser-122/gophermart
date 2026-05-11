@@ -15,6 +15,9 @@ type OrderStorage interface {
 	// GetUserOrders returns slice of orders for user with specified login
 	GetUserOrders(ctx context.Context, userLogin string) ([]*models.Order, error)
 
+	// GetOrder returns order for specified ID or nil id order was not uploaded
+	GetOrder(ctx context.Context, orderID string) (*models.Order, error)
+
 	// UpdateOrder updates order data and increments user's balance if accrual present
 	UpdateOrder(ctx context.Context, order *models.Order) (*models.Order, error)
 
