@@ -45,6 +45,9 @@ func (service *AccrualService) GetOrderData(ctx context.Context, orderID string)
 		return nil, err
 	}
 	if resp.StatusCode() == http.StatusOK {
+		if order.Status == models.RegisteredOrder {
+			order.Status = models.NewOrder
+		}
 		return &order, nil
 	}
 	if resp.StatusCode() == http.StatusNoContent {

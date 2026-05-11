@@ -8,6 +8,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/scouser-122/gophermart/internal/logger"
 	"github.com/scouser-122/gophermart/internal/models"
+	"github.com/scouser-122/gophermart/internal/utils"
 	"go.uber.org/zap"
 )
 
@@ -25,9 +26,6 @@ func (storage *PostgresOrderStorage) AddOrder(ctx context.Context, order *models
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			order.UploadedAt = time.Now()
-			if order.Status == models.RegisteredOrder {
-				order.Status = models.NewOrder
-			}
 			order.UserLogin = userLogin
 			tx, err := storage.Database.Begin(ctx)
 			if err != nil {
@@ -123,6 +121,50 @@ func (storage *PostgresOrderStorage) GetUserOrders(ctx context.Context, userLogi
 	}
 
 	return result, nil
+}
+
+// UpdateOrder updates order data and increments user's balance if accrual present
+func (storage *PostgresOrderStorage) UpdateOrder(ctx context.Context, order *models.Order) (*models.Order, error) {
+	logger := logger.GetLoggerFromContext(ctx)
+	var dbOrder models.Order
+	err := storage.Database.Select(ctx, &dbOrder, "SELECT * FROM orders WHERE id = $1", order.ID)
+	if err != nil {
+		logger.Sugar().Error(err)
+		return nil, err
+	}
+	if dbOrder.Status == order.Status && utils.EqualFloat32Ptr(dbOrder.Accrual, order.Accrual, 1e-6) {
+		return &dbOrder, nil
+	}
+	dbOrder.Status = order.Status
+	dbOrder.Accrual = order.Accrual
+	tx, err := storage.Database.Begin(ctx)
+	if err != nil {
+		logger.Sugar().Error(zap.Error(err))
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
+	_, err = tx.Exec(
+		ctx,
+		"UPDATE orders SET status = $1, accrual = $2 WHERE id = $3",
+		dbOrder.Status, dbOrder.Accrual, dbOrder.ID,
+	)
+	if err != nil {
+		logger.Sugar().Error(zap.Error(err))
+		return nil, err
+	}
+	if order.Accrual != nil {
+		_, err := tx.Exec(ctx, "UPDATE users SET balance = balance + $1 WHERE login = $2", dbOrder.Accrual, dbOrder.UserLogin)
+		if err != nil {
+			logger.Sugar().Error(zap.Error(err))
+			return nil, err
+		}
+	}
+	err = tx.Commit(ctx)
+	if err != nil {
+		logger.Sugar().Error(zap.Error(err))
+		return nil, err
+	}
+	return &dbOrder, nil
 }
 
 // GetWithdrawnForUser return total withdrawn points from all orders for specified user

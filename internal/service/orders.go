@@ -9,6 +9,7 @@ import (
 	"github.com/scouser-122/gophermart/internal/models"
 	"github.com/scouser-122/gophermart/internal/repository"
 	"github.com/scouser-122/gophermart/internal/repository/db"
+	"github.com/scouser-122/gophermart/internal/utils"
 )
 
 // OrdersService service to work with orders
@@ -56,8 +57,19 @@ func (service *OrdersService) GetUserOrders(ctx context.Context, userLogin strin
 		return []*models.Order{}, err
 	}
 	if len(orders) == 0 {
-		return []*models.Order{}, &models.CustomErr{
-			Code: models.CustomErrUserOrdersListEmpty,
+		return []*models.Order{}, &models.CustomErr{Code: models.CustomErrUserOrdersListEmpty}
+	}
+	for i, o := range orders {
+		accrualOrder, err := service.accrualService.GetOrderData(ctx, o.ID)
+		if err != nil {
+			return []*models.Order{}, err
+		}
+		if accrualOrder.Status != o.Status || !utils.EqualFloat32Ptr(accrualOrder.Accrual, o.Accrual, 1e-6) {
+			updatedOrder, err := service.orderStorage.UpdateOrder(ctx, accrualOrder)
+			if err != nil {
+				return []*models.Order{}, err
+			}
+			orders[i] = updatedOrder
 		}
 	}
 	return orders, nil
