@@ -83,20 +83,24 @@ func (service *OrdersService) GetWithdrawnForUser(ctx context.Context, login str
 // WithdrawBalanceForOrder withdraw user's loyalty points from balance for order with specified ID
 func (service *OrdersService) WithdrawBalanceForOrder(ctx context.Context, request *models.WithdrawBalanceRequest, login string) error {
 	logger := logger.GetLoggerFromContext(ctx)
+	logger.Debug("check order ID is valid")
 	isValid := luhnmod10.Valid(request.Order)
 	if !isValid {
 		err := &models.CustomErr{Code: models.CustomErrOrderIDInvalidFormat}
 		logger.Sugar().Error(err)
 		return err
 	}
+	logger.Debug("get order data from accrual service")
 	accrualOrder, err := service.accrualService.GetOrderData(ctx, request.Order)
 	if err != nil {
 		return err
 	}
+	logger.Debug("update order in storage")
 	updatedOrder, err := service.orderStorage.UpdateOrder(ctx, accrualOrder)
 	if err != nil {
 		return err
 	}
+	logger.Debug("withdraw balance for order")
 	return service.orderStorage.WithdrawBalanceForOrder(ctx, updatedOrder.ID, login, request.Sum)
 }
 

@@ -38,10 +38,12 @@ func (service *AccrualService) GetOrderData(ctx context.Context, orderID string)
 		SetResult(&order).
 		Get(url)
 	if err != nil {
-		logger.Sugar().Error(zap.Error(err))
 		if resp.StatusCode() == http.StatusNoContent {
-			return nil, &models.CustomErr{Code: models.CustomErrAccrualOrderNotRegistered}
+			err = &models.CustomErr{Code: models.CustomErrAccrualOrderNotRegistered}
+			logger.Sugar().Error(err)
+			return nil, err
 		}
+		logger.Sugar().Error(zap.Error(err))
 		return nil, err
 	}
 	if resp.StatusCode() == http.StatusOK {
@@ -51,10 +53,16 @@ func (service *AccrualService) GetOrderData(ctx context.Context, orderID string)
 		return &order, nil
 	}
 	if resp.StatusCode() == http.StatusNoContent {
-		return nil, &models.CustomErr{Code: models.CustomErrAccrualOrderNotRegistered}
+		err = &models.CustomErr{Code: models.CustomErrAccrualOrderNotRegistered}
+		logger.Sugar().Error(err)
+		return nil, err
 	}
 	if resp.StatusCode() == http.StatusTooManyRequests {
-		return nil, &models.CustomErr{Code: models.CustomErrAccrualTooManyRequests}
+		err = &models.CustomErr{Code: models.CustomErrAccrualTooManyRequests}
+		logger.Sugar().Error(err)
+		return nil, err
 	}
-	return nil, &models.CustomErr{Code: models.CustomErrAccrualInternalServerError}
+	err = &models.CustomErr{Code: models.CustomErrAccrualInternalServerError}
+	logger.Sugar().Error(err)
+	return nil, err
 }

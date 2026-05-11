@@ -201,6 +201,7 @@ func (h *OrdersHandler) HandleWithdrawBalance(res http.ResponseWriter, req *http
 		var customErr *models.CustomErr
 		if errors.As(err, &customErr) {
 			status, message := processCustomErrorWithdrawBalance(customErr)
+			logger.Sugar().Error(message, zap.Int("status", status))
 			res.WriteHeader(status)
 			res.Write(models.NewErrorResponseBuffer(message))
 			return
