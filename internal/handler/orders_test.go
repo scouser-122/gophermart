@@ -477,10 +477,11 @@ func TestGetUserOrders(t *testing.T) {
 }
 
 var userBalanceWithdrawTests = []struct {
-	name    string
-	request request
-	mockDB  db.MockPostgresDBTestData
-	want    want
+	name            string
+	request         request
+	accrualResponse accrualResponse
+	mockDB          db.MockPostgresDBTestData
+	want            want
 }{
 	{
 		name: "positive test user balance withdraw",
@@ -492,9 +493,30 @@ var userBalanceWithdrawTests = []struct {
 			},
 			body: `{"order":"4242424242424242","sum":200.5}`,
 		},
+		accrualResponse: accrualResponse{
+			status: http.StatusOK,
+			body:   `{"order":"4242424242424242","status":"RPOCESSING","accrual":500}`,
+		},
 		mockDB: db.MockPostgresDBTestData{
 			MockDBCalls: func(tt db.MockPostgresDBTestData) {
 				mock := tt.PgxPoolIface
+				mock.ExpectQuery("SELECT .+ FROM orders WHERE id").
+					WithArgs("4242424242424242").
+					WillReturnRows(mock.NewRows([]string{"id", "status", "uploaded_at", "accrual", "user_login"}).
+						AddRow(
+							"4242424242424242",
+							models.ProcessingOrder,
+							time.Date(2026, 5, 10, 12, 24, 45, 0, time.FixedZone("", 3*60*60)),
+							nil,
+							"TestLogin"))
+				mock.ExpectBegin()
+				mock.ExpectExec("UPDATE orders SET").
+					WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg()).
+					WillReturnResult(pgxmock.NewResult("UPDATE", 1))
+				mock.ExpectExec("UPDATE users SET balance").
+					WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg()).
+					WillReturnResult(pgxmock.NewResult("UPDATE", 1))
+				mock.ExpectCommit()
 				mock.ExpectBegin()
 				mock.ExpectExec("UPDATE users SET balance = balance - .+ WHERE login = .+2 AND balance >= .+").
 					WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg()).
@@ -534,9 +556,30 @@ var userBalanceWithdrawTests = []struct {
 			},
 			body: `{"order":"4242424242424242","sum":200.5}`,
 		},
+		accrualResponse: accrualResponse{
+			status: http.StatusOK,
+			body:   `{"order":"4242424242424242","status":"RPOCESSING","accrual":500}`,
+		},
 		mockDB: db.MockPostgresDBTestData{
 			MockDBCalls: func(tt db.MockPostgresDBTestData) {
 				mock := tt.PgxPoolIface
+				mock.ExpectQuery("SELECT .+ FROM orders WHERE id").
+					WithArgs("4242424242424242").
+					WillReturnRows(mock.NewRows([]string{"id", "status", "uploaded_at", "accrual", "user_login"}).
+						AddRow(
+							"4242424242424242",
+							models.ProcessingOrder,
+							time.Date(2026, 5, 10, 12, 24, 45, 0, time.FixedZone("", 3*60*60)),
+							nil,
+							"TestLogin"))
+				mock.ExpectBegin()
+				mock.ExpectExec("UPDATE orders SET").
+					WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg()).
+					WillReturnResult(pgxmock.NewResult("UPDATE", 1))
+				mock.ExpectExec("UPDATE users SET balance").
+					WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg()).
+					WillReturnResult(pgxmock.NewResult("UPDATE", 1))
+				mock.ExpectCommit()
 				mock.ExpectBegin()
 				mock.ExpectExec("UPDATE users SET balance = balance - .+ WHERE login = .+2 AND balance >= .+").
 					WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg()).
@@ -558,6 +601,10 @@ var userBalanceWithdrawTests = []struct {
 				"Authorization": fmt.Sprintf("Bearer %s", generateAuthToken("TestLogin")),
 			},
 		},
+		accrualResponse: accrualResponse{
+			status: http.StatusOK,
+			body:   `{"order":"4242424242424242","status":"RPOCESSING","accrual":500}`,
+		},
 		mockDB: db.MockPostgresDBTestData{
 			MockDBCalls: func(tt db.MockPostgresDBTestData) {},
 		},
@@ -576,17 +623,12 @@ var userBalanceWithdrawTests = []struct {
 			},
 			body: `{"order":"4242424242424242","sum":200.5}`,
 		},
+		accrualResponse: accrualResponse{
+			status: http.StatusNoContent,
+			body:   `{}`,
+		},
 		mockDB: db.MockPostgresDBTestData{
-			MockDBCalls: func(tt db.MockPostgresDBTestData) {
-				mock := tt.PgxPoolIface
-				mock.ExpectBegin()
-				mock.ExpectExec("UPDATE users SET balance = balance - .+ WHERE login = .+2 AND balance >= .+").
-					WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg()).
-					WillReturnResult(pgxmock.NewResult("UPDATE", 1))
-				mock.ExpectExec("UPDATE orders SET withdrawn").
-					WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg()).
-					WillReturnResult(pgxmock.NewResult("UPDATE", 0))
-			},
+			MockDBCalls: func(tt db.MockPostgresDBTestData) {},
 		},
 		want: want{
 			code:        http.StatusUnprocessableEntity,
@@ -602,6 +644,10 @@ var userBalanceWithdrawTests = []struct {
 				"Authorization": fmt.Sprintf("Bearer %s", generateAuthToken("TestLogin")),
 			},
 			body: `{"order":"4242424242424242","sum":200.5}`,
+		},
+		accrualResponse: accrualResponse{
+			status: http.StatusOK,
+			body:   `{"order":"4242424242424242","status":"RPOCESSING","accrual":500}`,
 		},
 		mockDB: db.MockPostgresDBTestData{
 			MockDBCalls: func(tt db.MockPostgresDBTestData) {
@@ -622,7 +668,17 @@ var userBalanceWithdrawTests = []struct {
 func TestUserBalanceWithdraw(t *testing.T) {
 	for _, test := range userBalanceWithdrawTests {
 		t.Run(test.name, func(t *testing.T) {
-			r := createTestRouter(&test.mockDB, "")
+			server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+				headers := rw.Header()
+				headers.Add("Content-Type", "application/json")
+				rw.WriteHeader(test.accrualResponse.status)
+				if test.accrualResponse.body != "" {
+					rw.Write([]byte(test.accrualResponse.body))
+				}
+			}))
+			defer server.Close()
+
+			r := createTestRouter(&test.mockDB, server.URL)
 
 			var bodyReader io.Reader
 			if test.request.body != "" {

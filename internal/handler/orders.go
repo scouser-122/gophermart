@@ -227,6 +227,9 @@ func processCustomErrorWithdrawBalance(customErr *models.CustomErr) (int, string
 	case models.CustomErrOrderNotFoundForWithdraw:
 		errMessage = "new or processing order with this ID is absent"
 		status = http.StatusUnprocessableEntity
+	case models.CustomErrAccrualOrderNotRegistered:
+		errMessage = "new or processing order with this ID is absent"
+		status = http.StatusUnprocessableEntity
 	case models.CustomErrUserBalanceNotEnough:
 		errMessage = "user balance not enough for withdrawal"
 		status = http.StatusPaymentRequired

@@ -89,7 +89,15 @@ func (service *OrdersService) WithdrawBalanceForOrder(ctx context.Context, reque
 		logger.Sugar().Error(err)
 		return err
 	}
-	return service.orderStorage.WithdrawBalanceForOrder(ctx, request.Order, login, request.Sum)
+	accrualOrder, err := service.accrualService.GetOrderData(ctx, request.Order)
+	if err != nil {
+		return err
+	}
+	updatedOrder, err := service.orderStorage.UpdateOrder(ctx, accrualOrder)
+	if err != nil {
+		return err
+	}
+	return service.orderStorage.WithdrawBalanceForOrder(ctx, updatedOrder.ID, login, request.Sum)
 }
 
 // WithdrawalsForUser returns slice of withdrawals data for specified user
