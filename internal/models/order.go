@@ -2,7 +2,6 @@ package models
 
 import (
 	"encoding/json"
-	"strconv"
 	"time"
 )
 
@@ -52,12 +51,6 @@ type Order struct {
 
 // MarshalJSON кастомная сериализация всей структуры
 func (o Order) MarshalJSON() ([]byte, error) {
-	var accrual string
-	if o.Accrual != nil {
-		accrual = strconv.FormatFloat(float64(*o.Accrual), 'f', -1, 32)
-	} else {
-		accrual = ""
-	}
 	var processedAt string
 	if o.ProcessedAt != nil {
 		processedAt = o.ProcessedAt.Format("2006-01-02T15:04:05-07:00")
@@ -65,16 +58,16 @@ func (o Order) MarshalJSON() ([]byte, error) {
 		processedAt = ""
 	}
 	return json.Marshal(&struct {
-		ID          string `json:"number"`
-		Status      string `json:"status"`
-		UploadedAt  string `json:"uploaded_at"`
-		Accrual     string `json:"accrual,omitempty"`
-		ProcessedAt string `json:"processed_at,omitempty"`
+		ID          string   `json:"number"`
+		Status      string   `json:"status"`
+		UploadedAt  string   `json:"uploaded_at"`
+		Accrual     *float32 `json:"accrual,omitempty"`
+		ProcessedAt string   `json:"processed_at,omitempty"`
 	}{
 		ID:          o.ID,
 		Status:      string(o.Status),
 		UploadedAt:  o.UploadedAt.Format("2006-01-02T15:04:05-07:00"),
-		Accrual:     accrual,
+		Accrual:     o.Accrual,
 		ProcessedAt: processedAt,
 	})
 }
