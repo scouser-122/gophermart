@@ -196,7 +196,7 @@ var userLoginTests = []struct {
 		},
 	},
 	{
-		name: "negative test login user failed",
+		name: "negative test login user bad password",
 		request: request{
 			method:      http.MethodPost,
 			contentType: "application/json",

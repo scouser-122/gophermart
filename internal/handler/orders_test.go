@@ -358,7 +358,7 @@ var getUserOrdersTests = []struct {
 		want: want{
 			code:        http.StatusOK,
 			contentType: "application/json",
-			body:        `[{"number":"4242424242424242","status":"RPOCESSED","uploaded_at":"2026-05-10T12:24:45+03:00","accrual":"500"}]`,
+			body:        `[{"number":"4242424242424242","status":"RPOCESSED","uploaded_at":"2026-05-10T12:24:45+03:00","accrual":500}]`,
 		},
 	},
 	{

@@ -79,7 +79,7 @@ func (h *UsersHandler) HandleRegister(res http.ResponseWriter, req *http.Request
 	res.Header().Add("Authorization", fmt.Sprintf("Bearer %s", authToken))
 
 	successMessage := "user successfully registered"
-	logger.Info(successMessage)
+	logger.Sugar().Info(successMessage, zap.String("login", registeredUser.Login))
 	res.WriteHeader(http.StatusOK)
 	res.Write(models.NewSuccessResponseBuffer(successMessage))
 }
@@ -150,7 +150,7 @@ func (h *UsersHandler) HandleLogin(res http.ResponseWriter, req *http.Request) {
 	res.Header().Add("Authorization", fmt.Sprintf("Bearer %s", authToken))
 
 	successMessage := "successfully logged in"
-	logger.Info(successMessage)
+	logger.Sugar().Info(successMessage, zap.String("login", user.Login))
 	res.WriteHeader(http.StatusOK)
 	res.Write(models.NewSuccessResponseBuffer(successMessage))
 }
@@ -205,7 +205,7 @@ func (h *UsersHandler) HandleUsersBalance(res http.ResponseWriter, req *http.Req
 		res.Write(models.NewErrorResponseBuffer(models.UnexpectedErrorMessage))
 		return
 	}
-	logger.Info("users balance successfully obtained")
+	logger.Sugar().Info("users balance successfully obtained", zap.String("login", userLogin))
 	res.WriteHeader(http.StatusOK)
 	res.Write(buf.Bytes())
 }

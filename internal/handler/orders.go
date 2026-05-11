@@ -84,7 +84,7 @@ func (h *OrdersHandler) HandleUploadOrder(res http.ResponseWriter, req *http.Req
 	}
 
 	successMessage := "order successfully saved"
-	logger.Info(successMessage)
+	logger.Info(successMessage, zap.String("id", orderID))
 	res.WriteHeader(http.StatusAccepted)
 	res.Write(models.NewSuccessResponseBuffer(successMessage))
 }

@@ -54,6 +54,7 @@ func (storage *PostgresOrderStorage) AddOrder(ctx context.Context, order *models
 				logger.Sugar().Error(zap.Error(err))
 				return err
 			}
+			logger.Sugar().Info("order stored in DB", zap.Any("order", *order))
 			return nil
 		} else {
 			logger.Sugar().Error(zap.Error(err))
@@ -164,6 +165,7 @@ func (storage *PostgresOrderStorage) UpdateOrder(ctx context.Context, order *mod
 		logger.Sugar().Error(zap.Error(err))
 		return nil, err
 	}
+	logger.Sugar().Info("order updated in DB", zap.Any("order", dbOrder))
 	return &dbOrder, nil
 }
 
@@ -229,6 +231,7 @@ func (storage *PostgresOrderStorage) WithdrawBalanceForOrder(ctx context.Context
 		logger.Sugar().Error(err)
 		return err
 	}
+	logger.Sugar().Info("balance withdrawed for order", zap.String("order", orderID), zap.Float32("sum", sum))
 	return nil
 }
 
