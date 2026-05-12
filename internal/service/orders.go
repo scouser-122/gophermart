@@ -39,15 +39,15 @@ func (service *OrdersService) Upload(ctx context.Context, orderID string, userLo
 		logger.Sugar().Error(err)
 		return nil, err
 	}
-	order, err := service.accrualService.GetOrderData(ctx, orderID)
+	order := service.accrualService.GetOrderData(ctx, orderID)
 	if order != nil {
-		err = service.orderStorage.AddOrder(ctx, order, userLogin)
+		err := service.orderStorage.AddOrder(ctx, order, userLogin)
 		if err != nil {
 			return nil, err
 		}
 	} else {
 		order = &models.Order{ID: orderID, Status: models.NewOrder}
-		err = service.orderStorage.AddOrder(ctx, order, userLogin)
+		err := service.orderStorage.AddOrder(ctx, order, userLogin)
 		if err != nil {
 			return nil, err
 		}
@@ -68,7 +68,7 @@ func (service *OrdersService) GetUserOrders(ctx context.Context, userLogin strin
 		return []*models.Order{}, err
 	}
 	for i, o := range orders {
-		accrualOrder, _ := service.accrualService.GetOrderData(ctx, o.ID)
+		accrualOrder := service.accrualService.GetOrderData(ctx, o.ID)
 		if accrualOrder != nil {
 			if accrualOrder.Status != o.Status || !utils.EqualFloat32Ptr(accrualOrder.Accrual, o.Accrual, 1e-6) {
 				updatedOrder, err := service.orderStorage.UpdateOrder(ctx, accrualOrder)
@@ -90,37 +90,31 @@ func (service *OrdersService) GetWithdrawnForUser(ctx context.Context, login str
 // WithdrawBalanceForOrder withdraw user's loyalty points from balance for order with specified ID
 func (service *OrdersService) WithdrawBalanceForOrder(ctx context.Context, request *models.WithdrawBalanceRequest, login string) error {
 	logger := logger.GetLoggerFromContext(ctx)
-	logger.Debug("check order ID is valid")
 	isValid := luhnmod10.Valid(request.Order)
 	if !isValid {
 		err := &models.CustomErr{Code: models.CustomErrOrderIDInvalidFormat}
 		logger.Sugar().Error(err)
 		return err
 	}
-	logger.Debug("get order data from storage")
 	order, err := service.orderStorage.GetOrder(ctx, request.Order)
 	if err != nil {
 		return err
 	}
 	if order == nil {
-		logger.Debug("add new order data to storage")
 		order = &models.Order{ID: request.Order, Status: models.NewOrder}
 		err = service.orderStorage.AddOrder(ctx, order, login)
 		if err != nil {
 			return err
 		}
 	} else {
-		logger.Debug("get order data from accrual service")
-		accrualOrder, err := service.accrualService.GetOrderData(ctx, request.Order)
+		accrualOrder := service.accrualService.GetOrderData(ctx, request.Order)
 		if accrualOrder != nil {
-			logger.Debug("update order in storage")
 			order, err = service.orderStorage.UpdateOrder(ctx, accrualOrder)
 			if err != nil {
 				return err
 			}
 		}
 	}
-	logger.Debug("withdraw balance for order")
 	return service.orderStorage.WithdrawBalanceForOrder(ctx, order.ID, login, request.Sum)
 }
 

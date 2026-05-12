@@ -14,7 +14,7 @@ type MockPostgresDBTestData struct {
 // NewPgxMockDB creates new postgres DB mock instance
 func NewPgxMockDB(serverConfig config.ServerConfig, pgxMock pgxmock.PgxPoolIface) PostgresDatabase {
 	database := PostgresDatabase{
-		config: config.DBConnectionConfig{
+		Config: config.DBConnectionConfig{
 			DSN:         serverConfig.DBDataSourceName,
 			RetryConfig: config.DefaultRetryConfig(),
 		},

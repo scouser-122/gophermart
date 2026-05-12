@@ -4,12 +4,12 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/go-resty/resty/v2"
 	"github.com/scouser-122/gophermart/internal/config"
 	"github.com/scouser-122/gophermart/internal/logger"
 	"github.com/scouser-122/gophermart/internal/models"
-	"go.uber.org/zap"
 )
 
 // AccrualService service to work with loyalty points calculation system
@@ -24,10 +24,22 @@ func NewAccrualService(serverConfig *config.ServerConfig) *AccrualService {
 	}
 }
 
-// GetOrderData obtains order data by id from loyalty points calculation system
-func (service *AccrualService) GetOrderData(ctx context.Context, orderID string) (*models.Order, error) {
+// GetOrderData obtains order data by id from loyalty points calculation system,
+// return pointer to order data or nil if order is absent in system or request failed
+func (service *AccrualService) GetOrderData(ctx context.Context, orderID string) *models.Order {
 	logger := logger.GetLoggerFromContext(ctx)
 	client := resty.New()
+	client.SetRetryCount(3).
+		SetRetryWaitTime(1 * time.Second).
+		SetRetryMaxWaitTime(2 * time.Second)
+	client.AddRetryCondition(
+		func(r *resty.Response, err error) bool {
+			return err != nil ||
+				r.StatusCode() == http.StatusRequestTimeout ||
+				r.StatusCode() == http.StatusTooManyRequests ||
+				r.StatusCode() == http.StatusInternalServerError
+		},
+	)
 	url := fmt.Sprintf(
 		"%s/api/orders/%s",
 		service.serverConfig.AccrualSystemAddress,
@@ -38,31 +50,15 @@ func (service *AccrualService) GetOrderData(ctx context.Context, orderID string)
 		SetResult(&order).
 		Get(url)
 	if err != nil {
-		if resp.StatusCode() == http.StatusNoContent {
-			err = &models.CustomErr{Code: models.CustomErrAccrualOrderNotRegistered}
-			logger.Sugar().Error(err)
-			return nil, err
-		}
-		logger.Sugar().Error(zap.Error(err))
-		return nil, err
+		logger.Sugar().Error(err)
+		return nil
 	}
+	logger.Sugar().Infof("accrual service response status: %d", resp.StatusCode())
 	if resp.StatusCode() == http.StatusOK {
 		if order.Status == models.RegisteredOrder {
 			order.Status = models.NewOrder
 		}
-		return &order, nil
+		return &order
 	}
-	if resp.StatusCode() == http.StatusNoContent {
-		err = &models.CustomErr{Code: models.CustomErrAccrualOrderNotRegistered}
-		logger.Sugar().Error(err)
-		return nil, err
-	}
-	if resp.StatusCode() == http.StatusTooManyRequests {
-		err = &models.CustomErr{Code: models.CustomErrAccrualTooManyRequests}
-		logger.Sugar().Error(err)
-		return nil, err
-	}
-	err = &models.CustomErr{Code: models.CustomErrAccrualInternalServerError}
-	logger.Sugar().Error(err)
-	return nil, err
+	return nil
 }

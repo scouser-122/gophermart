@@ -102,11 +102,6 @@ func processCustomErrorOrderUpload(customErr *models.CustomErr) (int, string) {
 	case models.CustomErrOrderAlreadyUploadedByAnotherUser:
 		errMessage = "order already uploaded by another user"
 		status = http.StatusConflict
-	case models.CustomErrAccrualOrderNotRegistered:
-	case models.CustomErrAccrualTooManyRequests:
-	case models.CustomErrAccrualInternalServerError:
-		errMessage = models.UnexpectedErrorMessage
-		status = http.StatusInternalServerError
 	default:
 		errMessage = models.UnexpectedErrorMessage
 		status = http.StatusInternalServerError
@@ -226,9 +221,6 @@ func processCustomErrorWithdrawBalance(customErr *models.CustomErr) (int, string
 		errMessage = "order ID invalid format"
 		status = http.StatusUnprocessableEntity
 	case models.CustomErrOrderNotFoundForWithdraw:
-		errMessage = "new or processing order with this ID is absent"
-		status = http.StatusUnprocessableEntity
-	case models.CustomErrAccrualOrderNotRegistered:
 		errMessage = "new or processing order with this ID is absent"
 		status = http.StatusUnprocessableEntity
 	case models.CustomErrUserBalanceNotEnough:

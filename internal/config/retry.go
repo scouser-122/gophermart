@@ -21,7 +21,7 @@ func DefaultRetryConfig() RetryConfig {
 	return RetryConfig{
 		MaxAttempts:       3,
 		InitialBackoff:    1000,
-		BackoffMultiplier: 2000,
+		BackoffMultiplier: 1000,
 	}
 }
 

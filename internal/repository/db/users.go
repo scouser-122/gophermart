@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/scouser-122/gophermart/internal/config"
 	"github.com/scouser-122/gophermart/internal/logger"
 	"github.com/scouser-122/gophermart/internal/models"
 	"go.uber.org/zap"
@@ -66,7 +67,13 @@ func (storage *PostgresUserStorage) GetUserBalance(ctx context.Context, login st
 		logger.Sugar().Error(err)
 		return 0.0, err
 	}
-	err = row.Scan(&result)
+	err = config.DataBaseRequestRetry(
+		ctx,
+		storage.Database.Config.RetryConfig,
+		func() error {
+			return row.Scan(&result)
+		},
+	)
 	if err != nil {
 		logger.Sugar().Error(err)
 		return 0.0, err

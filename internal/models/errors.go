@@ -34,9 +34,6 @@ const (
 	CustomErrOrderAlreadyUploadedByAnotherUser = 10008
 	CustomErrOrderIDInvalidFormat              = 10009
 	CustomErrUserOrdersListEmpty               = 10010
-	CustomErrAccrualOrderNotRegistered         = 10011
-	CustomErrAccrualTooManyRequests            = 10012
-	CustomErrAccrualInternalServerError        = 10013
 	CustomErrOrderNotFoundForWithdraw          = 10014
 	CustomErrUserBalanceNotEnough              = 10015
 	CustomErrWithdrawalsListEmpty              = 10016
@@ -61,9 +58,14 @@ func ClassifyPostgreSQLError(err error) ErrorClassification {
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) {
 		switch pgErr.Code {
-		case pgerrcode.ConnectionException,
+		case pgerrcode.SerializationFailure,
+			pgerrcode.DeadlockDetected,
+			pgerrcode.ConnectionException,
 			pgerrcode.ConnectionDoesNotExist,
-			pgerrcode.ConnectionFailure:
+			pgerrcode.ConnectionFailure,
+			pgerrcode.InsufficientResources,
+			pgerrcode.TooManyConnections,
+			pgerrcode.LockNotAvailable:
 			return Retryable
 		}
 	}

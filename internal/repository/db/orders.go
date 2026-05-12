@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/scouser-122/gophermart/internal/config"
 	"github.com/scouser-122/gophermart/internal/logger"
 	"github.com/scouser-122/gophermart/internal/models"
 	"github.com/scouser-122/gophermart/internal/utils"
@@ -49,7 +50,13 @@ func (storage *PostgresOrderStorage) AddOrder(ctx context.Context, order *models
 					return err
 				}
 			}
-			err = tx.Commit(ctx)
+			err = config.DataBaseRequestRetry(
+				ctx,
+				storage.Database.Config.RetryConfig,
+				func() error {
+					return tx.Commit(ctx)
+				},
+			)
 			if err != nil {
 				logger.Sugar().Error(zap.Error(err))
 				return err
@@ -180,7 +187,13 @@ func (storage *PostgresOrderStorage) UpdateOrder(ctx context.Context, order *mod
 			return nil, err
 		}
 	}
-	err = tx.Commit(ctx)
+	err = config.DataBaseRequestRetry(
+		ctx,
+		storage.Database.Config.RetryConfig,
+		func() error {
+			return tx.Commit(ctx)
+		},
+	)
 	if err != nil {
 		logger.Sugar().Error(zap.Error(err))
 		return nil, err
@@ -198,7 +211,13 @@ func (storage *PostgresOrderStorage) GetWithdrawnForUser(ctx context.Context, lo
 		logger.Sugar().Error(err)
 		return 0.0, err
 	}
-	err = row.Scan(&result)
+	err = config.DataBaseRequestRetry(
+		ctx,
+		storage.Database.Config.RetryConfig,
+		func() error {
+			return row.Scan(&result)
+		},
+	)
 	if err != nil {
 		logger.Sugar().Error(err)
 		return 0.0, err
@@ -246,7 +265,13 @@ func (storage *PostgresOrderStorage) WithdrawBalanceForOrder(ctx context.Context
 		logger.Sugar().Error(err)
 		return err
 	}
-	err = tx.Commit(ctx)
+	err = config.DataBaseRequestRetry(
+		ctx,
+		storage.Database.Config.RetryConfig,
+		func() error {
+			return tx.Commit(ctx)
+		},
+	)
 	if err != nil {
 		logger.Sugar().Error(err)
 		return err
