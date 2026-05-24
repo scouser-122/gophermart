@@ -16,25 +16,22 @@ import (
 // OrdersService service to work with orders
 type OrdersService struct {
 	database        *db.PostgresDatabase
-	orderStorage    repository.OrderStorage
-	orderGenStorage repository.OrdersGenStorage
-	usersGenStorage repository.UserGenStorage
+	ordersStorage   repository.OrdersStorage
+	usersStorage    repository.UsersStorage
 	repositoryUtils repository.RepositoryUtils
 	accrualService  *AccrualService
 }
 
 // NewOrdersService creates new OrdersService instance
 func NewOrdersService(
-	orderStorage repository.OrderStorage,
-	ordersGenStorage repository.OrdersGenStorage,
-	usersGenStorage repository.UserGenStorage,
+	ordersStorage repository.OrdersStorage,
+	usersStorage repository.UsersStorage,
 	repositoryUtils repository.RepositoryUtils,
 	accrualService *AccrualService,
 ) *OrdersService {
 	service := OrdersService{}
-	service.orderStorage = orderStorage
-	service.orderGenStorage = ordersGenStorage
-	service.usersGenStorage = usersGenStorage
+	service.ordersStorage = ordersStorage
+	service.usersStorage = usersStorage
 	service.repositoryUtils = repositoryUtils
 	service.accrualService = accrualService
 	return &service
@@ -57,7 +54,7 @@ func (service *OrdersService) Upload(ctx context.Context, orderID string, userLo
 		accrual = order.Accrual
 
 	}
-	order, err := service.orderGenStorage.Get(ctx, orderID)
+	order, err := service.ordersStorage.Get(ctx, orderID)
 	if order != nil {
 		if order.UserLogin == userLogin {
 			err = &models.CustomErr{Code: models.CustomErrOrderAlreadyUploaded}
@@ -77,12 +74,12 @@ func (service *OrdersService) Upload(ctx context.Context, orderID string, userLo
 			}
 			defer tx.Rollback(ctx)
 			ctx = context.WithValue(ctx, models.DbTransactionKey, tx)
-			order, err = service.orderGenStorage.Create(ctx, orderID, status, accrual, userLogin)
+			order, err = service.ordersStorage.Create(ctx, orderID, status, accrual, userLogin)
 			if err != nil {
 				return nil, err
 			}
 			if accrual != nil {
-				err = service.usersGenStorage.AddBalance(ctx, userLogin, accrual)
+				err = service.usersStorage.AddBalance(ctx, userLogin, accrual)
 				if err != nil {
 					return nil, err
 				}
@@ -102,8 +99,7 @@ func (service *OrdersService) Upload(ctx context.Context, orderID string, userLo
 // GetUserOrders returns slice of orders for user with specified login
 func (service *OrdersService) GetUserOrders(ctx context.Context, userLogin string) ([]*models.Order, error) {
 	logger := logger.GetLoggerFromContext(ctx)
-	// orders, err := service.orderStorage.GetUserOrders(ctx, userLogin)
-	orders, err := service.orderGenStorage.GetAllForUser(ctx, userLogin)
+	orders, err := service.ordersStorage.GetAllForUser(ctx, userLogin)
 	if err != nil {
 		return []*models.Order{}, err
 	}
@@ -116,7 +112,6 @@ func (service *OrdersService) GetUserOrders(ctx context.Context, userLogin strin
 		accrualOrder := service.accrualService.GetOrderData(ctx, o.ID)
 		if accrualOrder != nil {
 			if accrualOrder.Status != o.Status || !utils.EqualFloat32Ptr(accrualOrder.Accrual, o.Accrual, 1e-6) {
-				// updatedOrder, err := service.orderStorage.UpdateOrder(ctx, accrualOrder)
 				orders[i], err = service.updateChangedOrder(ctx, accrualOrder, userLogin)
 				if err != nil {
 					return []*models.Order{}, err
@@ -138,11 +133,11 @@ func (service *OrdersService) updateChangedOrder(
 	}
 	defer tx.Rollback(ctx)
 	ctx = context.WithValue(ctx, models.DbTransactionKey, tx)
-	err = service.orderGenStorage.Update(ctx, accrualOrder, userLogin)
+	err = service.ordersStorage.Update(ctx, accrualOrder, userLogin)
 	if err != nil {
 		return nil, err
 	}
-	err = service.usersGenStorage.AddBalance(ctx, userLogin, accrualOrder.Accrual)
+	err = service.usersStorage.AddBalance(ctx, userLogin, accrualOrder.Accrual)
 	if err != nil {
 		return nil, err
 	}
@@ -150,12 +145,7 @@ func (service *OrdersService) updateChangedOrder(
 	if err != nil {
 		return nil, err
 	}
-	return service.orderGenStorage.Get(ctx, accrualOrder.ID)
-}
-
-// GetWithdrawnForUser return total withdrawn points from all orders for specified user
-func (service *OrdersService) GetWithdrawnForUser(ctx context.Context, login string) (float32, error) {
-	return service.orderStorage.GetWithdrawnForUser(ctx, login)
+	return service.ordersStorage.Get(ctx, accrualOrder.ID)
 }
 
 // WithdrawBalanceForOrder withdraw user's loyalty points from balance for order with specified ID
@@ -167,26 +157,10 @@ func (service *OrdersService) WithdrawBalanceForOrder(ctx context.Context, reque
 		logger.Sugar().Error(err)
 		return err
 	}
-	// order, err := service.orderStorage.GetOrder(ctx, request.Order)
-	order, err := service.orderGenStorage.Get(ctx, request.Order)
+	order, err := service.ordersStorage.Get(ctx, request.Order)
 	if err != nil {
 		return err
 	}
-	// if order == nil {
-	// 	order = &models.Order{ID: request.Order, Status: models.NewOrder}
-	// 	err = service.orderStorage.AddOrder(ctx, order, login)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// } else {
-	// 	accrualOrder := service.accrualService.GetOrderData(ctx, request.Order)
-	// 	if accrualOrder != nil {
-	// 		order, err = service.orderStorage.UpdateOrder(ctx, accrualOrder)
-	// 		if err != nil {
-	// 			return err
-	// 		}
-	// 	}
-	// }
 	if order == nil {
 		order, err = service.Upload(ctx, request.Order, login)
 		if err != nil {
@@ -210,11 +184,11 @@ func (service *OrdersService) WithdrawBalanceForOrder(ctx context.Context, reque
 	}
 	defer tx.Rollback(ctx)
 	ctx = context.WithValue(ctx, models.DbTransactionKey, tx)
-	err = service.usersGenStorage.WithdrawBalance(ctx, login, request.Sum)
+	err = service.usersStorage.WithdrawBalance(ctx, login, request.Sum)
 	if err != nil {
 		return err
 	}
-	service.orderGenStorage.WithdrawSum(ctx, request.Order, request.Sum, login)
+	err = service.ordersStorage.WithdrawSum(ctx, request.Order, request.Sum, login)
 	if err != nil {
 		return err
 	}
@@ -228,8 +202,7 @@ func (service *OrdersService) WithdrawBalanceForOrder(ctx context.Context, reque
 // WithdrawalsForUser returns slice of withdrawals data for specified user
 func (service *OrdersService) WithdrawalsForUser(ctx context.Context, login string) ([]models.WithdrawalResponse, error) {
 	logger := logger.GetLoggerFromContext(ctx)
-	// withdrawals, err := service.orderStorage.WithdrawalsForUser(ctx, login)
-	withdrawals, err := service.orderGenStorage.WithdrawalsForUser(ctx, login)
+	withdrawals, err := service.ordersStorage.WithdrawalsForUser(ctx, login)
 	if err != nil {
 		return []models.WithdrawalResponse{}, err
 	}

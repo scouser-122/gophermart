@@ -6,27 +6,33 @@ import (
 	"github.com/scouser-122/gophermart/internal/models"
 )
 
-// OrderStorage declares methods to store orders data
-type OrderStorage interface {
-	// AddOrder adds specified order, links it with user, and increments user's balance if accrual present,
-	// returns error if order with specified ID already exists or add process failed
-	AddOrder(ctx context.Context, order *models.Order, userLogin string) error
+// OrdersStorage declares methods to store orders data
+type OrdersStorage interface {
+	// Create creates new order,
+	// returns error if order with specified ID already exists or process failed
+	Create(
+		ctx context.Context,
+		ID string,
+		status models.OrderStatus,
+		accrual *float32,
+		userLogin string,
+	) (*models.Order, error)
 
-	// GetUserOrders returns slice of orders for user with specified login
-	GetUserOrders(ctx context.Context, userLogin string) ([]*models.Order, error)
+	// Get obtains order from storage
+	Get(ctx context.Context, ID string) (*models.Order, error)
 
-	// GetOrder returns order for specified ID or nil id order was not uploaded
-	GetOrder(ctx context.Context, orderID string) (*models.Order, error)
+	// Update updates order data
+	Update(ctx context.Context, order *models.Order, userLogin string) error
 
-	// UpdateOrder updates order data and increments user's balance if accrual present
-	UpdateOrder(ctx context.Context, order *models.Order) (*models.Order, error)
+	// GetAllForUser returns all orders for specified user
+	GetAllForUser(ctx context.Context, userLogin string) ([]*models.Order, error)
 
 	// GetWithdrawnForUser return total withdrawn points from all orders for specified user
 	GetWithdrawnForUser(ctx context.Context, login string) (float32, error)
 
-	// WithdrawBalanceForOrder withdraw user's loyalty points from balance for order with specified ID
-	WithdrawBalanceForOrder(ctx context.Context, orderID string, login string, sum float32) error
+	// WithdrawSum set's withdrawn amount for specified order
+	WithdrawSum(ctx context.Context, ID string, sum float32, login string) error
 
 	// WithdrawalsForUser returns slice of withdrawals data for specified user
-	WithdrawalsForUser(ctx context.Context, login string) ([]models.WithdrawalResponse, error)
+	WithdrawalsForUser(ctx context.Context, userLogin string) ([]models.WithdrawalResponse, error)
 }

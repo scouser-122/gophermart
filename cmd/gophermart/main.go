@@ -32,12 +32,10 @@ func main() {
 
 	repositoryUtils := db.NewPostgresRepositoryUtils(&database)
 	accrualService := service.NewAccrualService(&serverConfig)
-	orderStorage := &db.PostgresOrderStorage{Database: &database}
-	ordersGenStorage := db.NewGenericOrderStorage(&database)
-	usersStorage := &db.PostgresUserStorage{Database: &database}
-	usersGenStorage := db.NewGenericUserStorage(&database)
-	ordersService := service.NewOrdersService(orderStorage, ordersGenStorage, usersGenStorage, repositoryUtils, accrualService)
-	userService := service.NewUsersService(usersStorage, usersGenStorage, ordersService)
+	ordersStorage := db.NewGenericOrderStorage(&database)
+	usersStorage := db.NewGenericUserStorage(&database)
+	ordersService := service.NewOrdersService(ordersStorage, usersStorage, repositoryUtils, accrualService)
+	userService := service.NewUsersService(usersStorage, ordersStorage)
 
 	jwtService := service.NewJwtService(&serverConfig)
 
