@@ -159,7 +159,12 @@ func (service *OrdersService) WithdrawBalanceForOrder(ctx context.Context, reque
 	}
 	order, err := service.ordersStorage.Get(ctx, request.Order)
 	if err != nil {
-		return err
+		var customErr *models.CustomErr
+		if errors.As(err, &customErr) && customErr.Code == models.CustomErrOrderNotFound {
+			order = nil
+		} else {
+			return err
+		}
 	}
 	if order == nil {
 		order, err = service.Upload(ctx, request.Order, login)
@@ -170,7 +175,6 @@ func (service *OrdersService) WithdrawBalanceForOrder(ctx context.Context, reque
 		accrualOrder := service.accrualService.GetOrderData(ctx, request.Order)
 		if accrualOrder != nil {
 			if accrualOrder.Status != order.Status || !utils.EqualFloat32Ptr(accrualOrder.Accrual, order.Accrual, 1e-6) {
-				// updatedOrder, err := service.orderStorage.UpdateOrder(ctx, accrualOrder)
 				order, err = service.updateChangedOrder(ctx, accrualOrder, login)
 				if err != nil {
 					return err
