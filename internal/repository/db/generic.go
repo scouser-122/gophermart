@@ -17,7 +17,7 @@ type QueryExecutor interface {
 	Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error)
 }
 
-// GenericRepository generic repository to work with any entity
+// GenericRepository generic Postgres repository to work with any entity
 type GenericRepository[T any] struct {
 	db      QueryExecutor
 	table   string

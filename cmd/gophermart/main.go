@@ -32,8 +32,8 @@ func main() {
 
 	repositoryUtils := db.NewPostgresRepositoryUtils(&database)
 	accrualService := service.NewAccrualService(&serverConfig)
-	ordersStorage := db.NewGenericOrderStorage(&database)
-	usersStorage := db.NewGenericUserStorage(&database)
+	ordersStorage := db.NewPostgresOrderStorage(&database)
+	usersStorage := db.NewPostgresUserStorage(&database)
 	ordersService := service.NewOrdersService(ordersStorage, usersStorage, repositoryUtils, accrualService)
 	userService := service.NewUsersService(usersStorage, ordersStorage)
 

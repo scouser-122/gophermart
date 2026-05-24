@@ -10,14 +10,14 @@ import (
 	"github.com/scouser-122/gophermart/internal/models"
 )
 
-// GenericOrderStorage implements OrderStorage interface to work with orders data in Postgres DB
-type GenericOrderStorage struct {
+// PostgresOrderStorage implements OrderStorage interface to work with orders data in Postgres DB
+type PostgresOrderStorage struct {
 	Database *PostgresDatabase
 	repo     *GenericRepository[models.Order]
 }
 
-// NewGenericOrderStorage creates generic order storage
-func NewGenericOrderStorage(db *PostgresDatabase) *GenericOrderStorage {
+// NewPostgresOrderStorage creates Postgres order storage
+func NewPostgresOrderStorage(db *PostgresDatabase) *PostgresOrderStorage {
 	mapper := func(row pgx.Row) (*models.Order, error) {
 		var order models.Order
 		err := row.Scan(
@@ -34,7 +34,7 @@ func NewGenericOrderStorage(db *PostgresDatabase) *GenericOrderStorage {
 		}
 		return &order, err
 	}
-	return &GenericOrderStorage{
+	return &PostgresOrderStorage{
 		Database: db,
 		repo:     NewGenericRepository(db, "orders", "id", mapper),
 	}
@@ -42,7 +42,7 @@ func NewGenericOrderStorage(db *PostgresDatabase) *GenericOrderStorage {
 
 // Create creates new order,
 // returns error if order with specified ID already exists or process failed
-func (s *GenericOrderStorage) Create(
+func (s *PostgresOrderStorage) Create(
 	ctx context.Context,
 	ID string,
 	status models.OrderStatus,
@@ -64,7 +64,7 @@ func (s *GenericOrderStorage) Create(
 }
 
 // Get obtains order from storage
-func (s *GenericOrderStorage) Get(ctx context.Context, ID string) (*models.Order, error) {
+func (s *PostgresOrderStorage) Get(ctx context.Context, ID string) (*models.Order, error) {
 	logger := logger.GetLoggerFromContext(ctx)
 	order, err := s.repo.GetByID(ctx, ID)
 	if err != nil {
@@ -79,7 +79,7 @@ func (s *GenericOrderStorage) Get(ctx context.Context, ID string) (*models.Order
 }
 
 // Update updates order data
-func (s *GenericOrderStorage) Update(ctx context.Context, order *models.Order, userLogin string) error {
+func (s *PostgresOrderStorage) Update(ctx context.Context, order *models.Order, userLogin string) error {
 	logger := logger.GetLoggerFromContext(ctx)
 	repo := s.repo
 	tx := models.GetTransactionFromContext(ctx)
@@ -95,7 +95,7 @@ func (s *GenericOrderStorage) Update(ctx context.Context, order *models.Order, u
 }
 
 // GetAllForUser returns all orders for specified user
-func (s *GenericOrderStorage) GetAllForUser(ctx context.Context, userLogin string) ([]*models.Order, error) {
+func (s *PostgresOrderStorage) GetAllForUser(ctx context.Context, userLogin string) ([]*models.Order, error) {
 	logger := logger.GetLoggerFromContext(ctx)
 	result := []*models.Order{}
 	page := 0
@@ -123,7 +123,7 @@ func (s *GenericOrderStorage) GetAllForUser(ctx context.Context, userLogin strin
 }
 
 // GetWithdrawnForUser return total withdrawn points from all orders for specified user
-func (s *GenericOrderStorage) GetWithdrawnForUser(ctx context.Context, login string) (float32, error) {
+func (s *PostgresOrderStorage) GetWithdrawnForUser(ctx context.Context, login string) (float32, error) {
 	logger := logger.GetLoggerFromContext(ctx)
 	var result *float32
 	mapper := func(row pgx.Row) error {
@@ -141,7 +141,7 @@ func (s *GenericOrderStorage) GetWithdrawnForUser(ctx context.Context, login str
 }
 
 // WithdrawSum set's withdrawn amount for specified order
-func (s *GenericOrderStorage) WithdrawSum(ctx context.Context, ID string, sum float32, login string) error {
+func (s *PostgresOrderStorage) WithdrawSum(ctx context.Context, ID string, sum float32, login string) error {
 	logger := logger.GetLoggerFromContext(ctx)
 	repo := s.repo
 	tx := models.GetTransactionFromContext(ctx)
@@ -166,7 +166,7 @@ func (s *GenericOrderStorage) WithdrawSum(ctx context.Context, ID string, sum fl
 }
 
 // WithdrawalsForUser returns slice of withdrawals data for specified user
-func (s *GenericOrderStorage) WithdrawalsForUser(ctx context.Context, userLogin string) ([]models.WithdrawalResponse, error) {
+func (s *PostgresOrderStorage) WithdrawalsForUser(ctx context.Context, userLogin string) ([]models.WithdrawalResponse, error) {
 	logger := logger.GetLoggerFromContext(ctx)
 	result := []models.WithdrawalResponse{}
 	page := 0

@@ -12,14 +12,14 @@ import (
 	"github.com/scouser-122/gophermart/internal/models"
 )
 
-// GenericUserStorage implements UserStorage interface to store users data in Postgres DB
-type GenericUserStorage struct {
+// PostgresUserStorage implements UserStorage interface to store users data in Postgres DB
+type PostgresUserStorage struct {
 	Database *PostgresDatabase
 	repo     *GenericRepository[models.User]
 }
 
-// NewGenericUserStorage creates generic users storage
-func NewGenericUserStorage(db *PostgresDatabase) *GenericUserStorage {
+// NewPostgresUserStorage creates Postgres users storage
+func NewPostgresUserStorage(db *PostgresDatabase) *PostgresUserStorage {
 	mapper := func(row pgx.Row) (*models.User, error) {
 		var user models.User
 		err := row.Scan(
@@ -33,7 +33,7 @@ func NewGenericUserStorage(db *PostgresDatabase) *GenericUserStorage {
 		}
 		return &user, err
 	}
-	return &GenericUserStorage{
+	return &PostgresUserStorage{
 		Database: db,
 		repo:     NewGenericRepository(db, "users", "login", mapper),
 	}
@@ -41,7 +41,7 @@ func NewGenericUserStorage(db *PostgresDatabase) *GenericUserStorage {
 
 // Create creates new user,
 // returns error if user with specified login already exists or process failed
-func (s *GenericUserStorage) Create(ctx context.Context, login string, password string) (*models.User, error) {
+func (s *PostgresUserStorage) Create(ctx context.Context, login string, password string) (*models.User, error) {
 	logger := logger.GetLoggerFromContext(ctx)
 	user, err := s.repo.Create(ctx, "login,password,created_at", login, password, time.Now())
 	if err != nil {
@@ -60,7 +60,7 @@ func (s *GenericUserStorage) Create(ctx context.Context, login string, password 
 }
 
 // Get obtains user from storage
-func (s *GenericUserStorage) Get(ctx context.Context, login string) (*models.User, error) {
+func (s *PostgresUserStorage) Get(ctx context.Context, login string) (*models.User, error) {
 	logger := logger.GetLoggerFromContext(ctx)
 	user, err := s.repo.GetByID(ctx, login)
 	if err != nil {
@@ -76,7 +76,7 @@ func (s *GenericUserStorage) Get(ctx context.Context, login string) (*models.Use
 }
 
 // AddBalance adds specified accrual to user's balance
-func (s *GenericUserStorage) AddBalance(ctx context.Context, login string, accrual *float32) error {
+func (s *PostgresUserStorage) AddBalance(ctx context.Context, login string, accrual *float32) error {
 	logger := logger.GetLoggerFromContext(ctx)
 	repo := s.repo
 	tx := models.GetTransactionFromContext(ctx)
@@ -92,7 +92,7 @@ func (s *GenericUserStorage) AddBalance(ctx context.Context, login string, accru
 }
 
 // WithdrawBalance withdraws specified sum from user's balance
-func (s *GenericUserStorage) WithdrawBalance(ctx context.Context, login string, sum float32) error {
+func (s *PostgresUserStorage) WithdrawBalance(ctx context.Context, login string, sum float32) error {
 	logger := logger.GetLoggerFromContext(ctx)
 	repo := s.repo
 	tx := models.GetTransactionFromContext(ctx)
