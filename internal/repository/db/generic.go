@@ -83,7 +83,8 @@ func (r *GenericRepository[T]) GetByID(ctx context.Context, id string) (*T, erro
 	return entity, err
 }
 
-// GetAllConditional returns all entities which met condition ordered by specified field
+// GetAllConditional returns all entities which met condition expression with specified conditionFields,
+// entities will be ordered by field specified in orderBy expression, and taken by pages of specified pageSize
 func (r *GenericRepository[T]) GetAllConditional(
 	ctx context.Context,
 	condition string,
