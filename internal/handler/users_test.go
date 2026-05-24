@@ -10,7 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/pashagolub/pgxmock/v5"
 	"github.com/scouser-122/gophermart/internal/repository/db"
 	"github.com/stretchr/testify/assert"
@@ -33,12 +34,13 @@ var userRegisterTests = []struct {
 		mockDB: db.MockPostgresDBTestData{
 			MockDBCalls: func(tt db.MockPostgresDBTestData) {
 				mock := tt.PgxPoolIface
+				mock.ExpectExec("INSERT INTO users .+").
+					WithArgs("TestLogin", pgxmock.AnyArg(), pgxmock.AnyArg()).
+					WillReturnResult(pgxmock.NewResult("INSERT", 1))
 				mock.ExpectQuery("SELECT .+ FROM users WHERE login").
 					WithArgs("TestLogin").
-					WillReturnError(pgx.ErrNoRows)
-				mock.ExpectExec("insert into users .+").
-					WithArgs("TestLogin", pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg()).
-					WillReturnResult(pgxmock.NewResult("INSERT", 1))
+					WillReturnRows(mock.NewRows([]string{"login", "password", "balance", "created_at"}).
+						AddRow("TestLogin", "TestPassword", 0.0, time.Now()))
 			},
 		},
 		want: want{
@@ -75,10 +77,9 @@ var userRegisterTests = []struct {
 		mockDB: db.MockPostgresDBTestData{
 			MockDBCalls: func(tt db.MockPostgresDBTestData) {
 				mock := tt.PgxPoolIface
-				mock.ExpectQuery("SELECT .+ FROM users WHERE login").
-					WithArgs("TestLogin").
-					WillReturnRows(mock.NewRows([]string{"login", "password", "balance", "created_at"}).
-						AddRow("TestLogin", "TestPassword", 0.0, time.Now()))
+				mock.ExpectExec("INSERT INTO users .+").
+					WithArgs("TestLogin", pgxmock.AnyArg(), pgxmock.AnyArg()).
+					WillReturnError(&pgconn.PgError{Code: pgerrcode.UniqueViolation})
 			},
 		},
 		want: want{
@@ -298,9 +299,10 @@ var userGetBalanceTests = []struct {
 		mockDB: db.MockPostgresDBTestData{
 			MockDBCalls: func(tt db.MockPostgresDBTestData) {
 				mock := tt.PgxPoolIface
-				mock.ExpectQuery("SELECT balance FROM users WHERE login").
+				mock.ExpectQuery("SELECT .+ FROM users WHERE login").
 					WithArgs("TestLogin").
-					WillReturnRows(mock.NewRows([]string{"balance"}).AddRow(500.2))
+					WillReturnRows(mock.NewRows([]string{"login", "password", "balance", "created_at"}).
+						AddRow("TestLogin", "7bcf9d89298f1bfae16fa02ed6b61908fd2fa8de45dd8e2153a3c47300765328", 500.2, time.Now()))
 				mock.ExpectQuery("SELECT SUM\\(withdrawn\\) FROM orders WHERE user_login").
 					WithArgs("TestLogin").
 					WillReturnRows(mock.NewRows([]string{"withdrawn"}).AddRow(Ptr(float32(60.25))))
@@ -338,7 +340,7 @@ var userGetBalanceTests = []struct {
 		mockDB: db.MockPostgresDBTestData{
 			MockDBCalls: func(tt db.MockPostgresDBTestData) {
 				mock := tt.PgxPoolIface
-				mock.ExpectQuery("SELECT balance FROM users WHERE login").
+				mock.ExpectQuery("SELECT .+ FROM users WHERE login").
 					WithArgs("TestLogin").
 					WillReturnError(fmt.Errorf("some error"))
 			},

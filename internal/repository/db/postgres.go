@@ -175,11 +175,8 @@ func (db *PostgresDatabase) Query(ctx context.Context, query string, args ...any
 }
 
 // QueryRow takes one row by request with specified parameters
-func (db *PostgresDatabase) QueryRow(ctx context.Context, query string, args ...any) (pgx.Row, error) {
-	if isNil(db.pool) {
-		return nil, fmt.Errorf("database connection was not opened")
-	}
-	return db.pool.QueryRow(ctx, query, args...), nil
+func (db *PostgresDatabase) QueryRow(ctx context.Context, query string, args ...any) pgx.Row {
+	return db.pool.QueryRow(ctx, query, args...)
 }
 
 // Select takes one object of passed pointer type by request specified parameters
@@ -232,9 +229,6 @@ func (db *PostgresDatabase) Begin(ctx context.Context) (pgx.Tx, error) {
 	)
 	return tx, err
 }
-
-// DbTransactionKey key value to store DB transaction in context
-const DbTransactionKey string = "dbTransaction"
 
 func isNil(i interface{}) bool {
 	if i == nil {

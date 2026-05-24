@@ -206,12 +206,8 @@ func (storage *PostgresOrderStorage) UpdateOrder(ctx context.Context, order *mod
 func (storage *PostgresOrderStorage) GetWithdrawnForUser(ctx context.Context, login string) (float32, error) {
 	logger := logger.GetLoggerFromContext(ctx)
 	var result *float32
-	row, err := storage.Database.QueryRow(ctx, "SELECT SUM(withdrawn) FROM orders WHERE user_login = $1", login)
-	if err != nil {
-		logger.Sugar().Error(err)
-		return 0.0, err
-	}
-	err = config.DataBaseRequestRetry(
+	row := storage.Database.QueryRow(ctx, "SELECT SUM(withdrawn) FROM orders WHERE user_login = $1", login)
+	err := config.DataBaseRequestRetry(
 		ctx,
 		storage.Database.Config.RetryConfig,
 		func() error {

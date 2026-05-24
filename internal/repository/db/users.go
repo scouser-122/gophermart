@@ -62,12 +62,8 @@ func (storage *PostgresUserStorage) GetUser(ctx context.Context, login string) (
 func (storage *PostgresUserStorage) GetUserBalance(ctx context.Context, login string) (float32, error) {
 	logger := logger.GetLoggerFromContext(ctx)
 	var result float32
-	row, err := storage.Database.QueryRow(ctx, "SELECT balance FROM users WHERE login = $1", login)
-	if err != nil {
-		logger.Sugar().Error(err)
-		return 0.0, err
-	}
-	err = config.DataBaseRequestRetry(
+	row := storage.Database.QueryRow(ctx, "SELECT balance FROM users WHERE login = $1", login)
+	err := config.DataBaseRequestRetry(
 		ctx,
 		storage.Database.Config.RetryConfig,
 		func() error {

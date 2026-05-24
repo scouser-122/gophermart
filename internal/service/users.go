@@ -11,14 +11,20 @@ import (
 
 // UsersService service to work with users
 type UsersService struct {
-	userStorage   repository.UserStorage
-	ordersService *OrdersService
+	userStorage    repository.UserStorage
+	userGenStorage repository.UserGenStorage
+	ordersService  *OrdersService
 }
 
 // NewUsersService creates new UsersService instance
-func NewUsersService(userStorage repository.UserStorage, ordersService *OrdersService) *UsersService {
+func NewUsersService(
+	userStorage repository.UserStorage,
+	userGenStorage repository.UserGenStorage,
+	ordersService *OrdersService,
+) *UsersService {
 	service := UsersService{}
 	service.userStorage = userStorage
+	service.userGenStorage = userGenStorage
 	service.ordersService = ordersService
 	return &service
 }
@@ -42,7 +48,12 @@ func (service *UsersService) Register(ctx context.Context, user *models.User) (*
 		return nil, err
 	}
 	user.Password = passwordHash
-	newUser, err := service.userStorage.AddUser(ctx, user)
+	// newUser, err := service.userStorage.AddUser(ctx, user)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// return newUser, nil
+	newUser, err := service.userGenStorage.Create(ctx, user.Login, user.Password)
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +73,8 @@ func (service *UsersService) Login(ctx context.Context, user *models.User) error
 		logger.Sugar().Error(err)
 		return err
 	}
-	storedUser, err := service.userStorage.GetUser(ctx, user.Login)
+	// storedUser, err := service.userStorage.GetUser(ctx, user.Login)
+	storedUser, err := service.userGenStorage.Get(ctx, user.Login)
 	if err != nil {
 		return err
 	}
@@ -82,11 +94,16 @@ func (service *UsersService) Login(ctx context.Context, user *models.User) error
 func (service *UsersService) GetUserBalance(ctx context.Context, login string) (*models.UserBalanceResponse, error) {
 	result := models.UserBalanceResponse{}
 	var err error
-	result.Current, err = service.userStorage.GetUserBalance(ctx, login)
+	// result.Current, err = service.userStorage.GetUserBalance(ctx, login)
+	storedUser, err := service.userGenStorage.Get(ctx, login)
 	if err != nil {
 		return nil, err
 	}
-	result.Withdrawn, err = service.ordersService.GetWithdrawnForUser(ctx, login)
+	result.Current = storedUser.Balance
+	if err != nil {
+		return nil, err
+	}
+	result.Withdrawn, err = service.ordersService.orderGenStorage.GetWithdrawnForUser(ctx, login)
 	if err != nil {
 		return nil, err
 	}

@@ -30,11 +30,14 @@ func main() {
 	}
 	defer database.Close()
 
+	repositoryUtils := db.NewPostgresRepositoryUtils(&database)
 	accrualService := service.NewAccrualService(&serverConfig)
 	orderStorage := &db.PostgresOrderStorage{Database: &database}
-	ordersService := service.NewOrdersService(orderStorage, accrualService)
+	ordersGenStorage := db.NewGenericOrderStorage(&database)
 	usersStorage := &db.PostgresUserStorage{Database: &database}
-	userService := service.NewUsersService(usersStorage, ordersService)
+	usersGenStorage := db.NewGenericUserStorage(&database)
+	ordersService := service.NewOrdersService(orderStorage, ordersGenStorage, usersGenStorage, repositoryUtils, accrualService)
+	userService := service.NewUsersService(usersStorage, usersGenStorage, ordersService)
 
 	jwtService := service.NewJwtService(&serverConfig)
 

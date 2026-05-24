@@ -168,6 +168,9 @@ func processCustomErrorLogin(customErr *models.CustomErr, res http.ResponseWrite
 	case models.CustomErrUserPasswordInvalidFormat:
 		errMessage = "login invalid format"
 		res.WriteHeader(http.StatusBadRequest)
+	case models.CustomErrUserNotFound:
+		errMessage = "user not found"
+		res.WriteHeader(http.StatusUnauthorized)
 	case models.CustomErrUserLoginPasswordNotMatch:
 		errMessage = "login invalid format"
 		res.WriteHeader(http.StatusUnauthorized)

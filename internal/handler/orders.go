@@ -69,7 +69,6 @@ func (h *OrdersHandler) HandleUploadOrder(res http.ResponseWriter, req *http.Req
 			status, message := processCustomErrorOrderUpload(customErr)
 			res.WriteHeader(status)
 			if status >= http.StatusBadRequest {
-				logger.Error(message, zap.Error(err))
 				res.Write(models.NewErrorResponseBuffer(message))
 			} else {
 				logger.Sugar().Info(message)

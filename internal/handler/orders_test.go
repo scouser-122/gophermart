@@ -61,6 +61,10 @@ var orderUploadTests = []struct {
 				mock.ExpectExec("INSERT INTO orders").
 					WithArgs("4242424242424242", models.NewOrder, pgxmock.AnyArg(), pgxmock.AnyArg(), "TestLogin").
 					WillReturnResult(pgxmock.NewResult("INSERT", 1))
+				mock.ExpectQuery("SELECT .+ FROM orders WHERE id").
+					WithArgs("4242424242424242").
+					WillReturnRows(mock.NewRows([]string{"id", "status", "uploaded_at", "accrual", "withdrawn", "processed_at", "user_login"}).
+						AddRow("4242424242424242", models.NewOrder, time.Now(), Ptr(float32(500)), nil, nil, "TestLogin"))
 				mock.ExpectExec("UPDATE users SET balance").
 					WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg()).
 					WillReturnResult(pgxmock.NewResult("UPDATE", 1))
@@ -94,8 +98,8 @@ var orderUploadTests = []struct {
 				mock := tt.PgxPoolIface
 				mock.ExpectQuery("SELECT .+ FROM orders WHERE id").
 					WithArgs("4242424242424242").
-					WillReturnRows(mock.NewRows([]string{"id", "status", "uploaded_at", "accrual", "user_login"}).
-						AddRow("4242424242424242", models.NewOrder, time.Now(), Ptr(float32(500)), "TestLogin"))
+					WillReturnRows(mock.NewRows([]string{"id", "status", "uploaded_at", "accrual", "withdrawn", "processed_at", "user_login"}).
+						AddRow("4242424242424242", models.NewOrder, time.Now(), Ptr(float32(500)), nil, nil, "TestLogin"))
 			},
 		},
 		want: want{
@@ -162,8 +166,8 @@ var orderUploadTests = []struct {
 				mock := tt.PgxPoolIface
 				mock.ExpectQuery("SELECT .+ FROM orders WHERE id").
 					WithArgs("4242424242424242").
-					WillReturnRows(mock.NewRows([]string{"id", "status", "uploaded_at", "accrual", "user_login"}).
-						AddRow("4242424242424242", models.NewOrder, time.Now(), Ptr(float32(500)), "TestLogin2"))
+					WillReturnRows(mock.NewRows([]string{"id", "status", "uploaded_at", "accrual", "withdrawn", "processed_at", "user_login"}).
+						AddRow("4242424242424242", models.NewOrder, time.Now(), Ptr(float32(500)), nil, nil, "TestLogin2"))
 			},
 		},
 		want: want{
@@ -326,25 +330,16 @@ var getUserOrdersTests = []struct {
 				mock := tt.PgxPoolIface
 				mock.ExpectQuery("SELECT .+ FROM orders WHERE user_login").
 					WithArgs("TestLogin", pgxmock.AnyArg(), pgxmock.AnyArg()).
-					WillReturnRows(mock.NewRows([]string{"id", "status", "uploaded_at", "accrual", "user_login"}).
+					WillReturnRows(mock.NewRows([]string{"id", "status", "uploaded_at", "accrual", "withdrawn", "processed_at", "user_login"}).
 						AddRow(
 							"4242424242424242",
 							models.NewOrder,
 							time.Date(2026, 5, 10, 12, 24, 45, 0, time.FixedZone("", 3*60*60)),
-							nil,
+							nil, nil, nil,
 							"TestLogin"))
 				mock.ExpectQuery("SELECT .+ FROM orders WHERE user_login").
 					WithArgs("TestLogin", pgxmock.AnyArg(), pgxmock.AnyArg()).
-					WillReturnError(pgx.ErrNoRows)
-				mock.ExpectQuery("SELECT .+ FROM orders WHERE id").
-					WithArgs("4242424242424242").
-					WillReturnRows(mock.NewRows([]string{"id", "status", "uploaded_at", "accrual", "user_login"}).
-						AddRow(
-							"4242424242424242",
-							models.NewOrder,
-							time.Date(2026, 5, 10, 12, 24, 45, 0, time.FixedZone("", 3*60*60)),
-							nil,
-							"TestLogin"))
+					WillReturnRows(mock.NewRows([]string{"id", "status", "uploaded_at", "accrual", "withdrawn", "processed_at", "user_login"}))
 				mock.ExpectBegin()
 				mock.ExpectExec("UPDATE orders SET").
 					WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg()).
@@ -353,12 +348,22 @@ var getUserOrdersTests = []struct {
 					WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg()).
 					WillReturnResult(pgxmock.NewResult("UPDATE", 1))
 				mock.ExpectCommit()
+				mock.ExpectQuery("SELECT .+ FROM orders WHERE id").
+					WithArgs("4242424242424242").
+					WillReturnRows(mock.NewRows([]string{"id", "status", "uploaded_at", "accrual", "withdrawn", "processed_at", "user_login"}).
+						AddRow(
+							"4242424242424242",
+							models.ProcessedOrder,
+							time.Date(2026, 5, 10, 12, 24, 45, 0, time.FixedZone("", 3*60*60)),
+							Ptr(float32(500)),
+							nil, nil,
+							"TestLogin"))
 			},
 		},
 		want: want{
 			code:        http.StatusOK,
 			contentType: "application/json",
-			body:        `[{"number":"4242424242424242","status":"RPOCESSED","uploaded_at":"2026-05-10T12:24:45+03:00","accrual":500}]`,
+			body:        `[{"number":"4242424242424242","status":"PROCESSED","uploaded_at":"2026-05-10T12:24:45+03:00","accrual":500}]`,
 		},
 	},
 	{
@@ -375,7 +380,7 @@ var getUserOrdersTests = []struct {
 				mock := tt.PgxPoolIface
 				mock.ExpectQuery("SELECT .+ FROM orders WHERE user_login").
 					WithArgs("TestLogin", pgxmock.AnyArg(), pgxmock.AnyArg()).
-					WillReturnError(pgx.ErrNoRows)
+					WillReturnRows(mock.NewRows([]string{"id", "status", "uploaded_at", "accrual", "withdrawn", "processed_at", "user_login"}))
 			},
 		},
 		want: want{
@@ -502,22 +507,22 @@ var userBalanceWithdrawTests = []struct {
 				mock := tt.PgxPoolIface
 				mock.ExpectQuery("SELECT .+ FROM orders WHERE id").
 					WithArgs("4242424242424242").
-					WillReturnRows(mock.NewRows([]string{"id", "status", "uploaded_at", "accrual", "user_login"}).
+					WillReturnRows(mock.NewRows([]string{"id", "status", "uploaded_at", "accrual", "withdrawn", "processed_at", "user_login"}).
 						AddRow(
 							"4242424242424242",
 							models.ProcessingOrder,
 							time.Date(2026, 5, 10, 12, 24, 45, 0, time.FixedZone("", 3*60*60)),
-							nil,
+							nil, nil, nil,
 							"TestLogin"))
-				mock.ExpectQuery("SELECT .+ FROM orders WHERE id").
-					WithArgs("4242424242424242").
-					WillReturnRows(mock.NewRows([]string{"id", "status", "uploaded_at", "accrual", "user_login"}).
-						AddRow(
-							"4242424242424242",
-							models.ProcessingOrder,
-							time.Date(2026, 5, 10, 12, 24, 45, 0, time.FixedZone("", 3*60*60)),
-							nil,
-							"TestLogin"))
+				// mock.ExpectQuery("SELECT .+ FROM orders WHERE id").
+				// 	WithArgs("4242424242424242").
+				// 	WillReturnRows(mock.NewRows([]string{"id", "status", "uploaded_at", "accrual", "user_login"}).
+				// 		AddRow(
+				// 			"4242424242424242",
+				// 			models.ProcessingOrder,
+				// 			time.Date(2026, 5, 10, 12, 24, 45, 0, time.FixedZone("", 3*60*60)),
+				// 			nil,
+				// 			"TestLogin"))
 				mock.ExpectBegin()
 				mock.ExpectExec("UPDATE orders SET").
 					WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg()).
@@ -526,6 +531,16 @@ var userBalanceWithdrawTests = []struct {
 					WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg()).
 					WillReturnResult(pgxmock.NewResult("UPDATE", 1))
 				mock.ExpectCommit()
+				mock.ExpectQuery("SELECT .+ FROM orders WHERE id").
+					WithArgs("4242424242424242").
+					WillReturnRows(mock.NewRows([]string{"id", "status", "uploaded_at", "accrual", "withdrawn", "processed_at", "user_login"}).
+						AddRow(
+							"4242424242424242",
+							models.ProcessingOrder,
+							time.Date(2026, 5, 10, 12, 24, 45, 0, time.FixedZone("", 3*60*60)),
+							Ptr(float32(500)),
+							nil, nil,
+							"TestLogin"))
 				mock.ExpectBegin()
 				mock.ExpectExec("UPDATE users SET balance = balance - .+ WHERE login = .+2 AND balance >= .+").
 					WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg()).
@@ -574,21 +589,12 @@ var userBalanceWithdrawTests = []struct {
 				mock := tt.PgxPoolIface
 				mock.ExpectQuery("SELECT .+ FROM orders WHERE id").
 					WithArgs("4242424242424242").
-					WillReturnRows(mock.NewRows([]string{"id", "status", "uploaded_at", "accrual", "user_login"}).
+					WillReturnRows(mock.NewRows([]string{"id", "status", "uploaded_at", "accrual", "withdrawn", "processed_at", "user_login"}).
 						AddRow(
 							"4242424242424242",
 							models.ProcessingOrder,
 							time.Date(2026, 5, 10, 12, 24, 45, 0, time.FixedZone("", 3*60*60)),
-							nil,
-							"TestLogin"))
-				mock.ExpectQuery("SELECT .+ FROM orders WHERE id").
-					WithArgs("4242424242424242").
-					WillReturnRows(mock.NewRows([]string{"id", "status", "uploaded_at", "accrual", "user_login"}).
-						AddRow(
-							"4242424242424242",
-							models.ProcessingOrder,
-							time.Date(2026, 5, 10, 12, 24, 45, 0, time.FixedZone("", 3*60*60)),
-							nil,
+							nil, nil, nil,
 							"TestLogin"))
 				mock.ExpectBegin()
 				mock.ExpectExec("UPDATE orders SET").
@@ -598,6 +604,16 @@ var userBalanceWithdrawTests = []struct {
 					WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg()).
 					WillReturnResult(pgxmock.NewResult("UPDATE", 1))
 				mock.ExpectCommit()
+				mock.ExpectQuery("SELECT .+ FROM orders WHERE id").
+					WithArgs("4242424242424242").
+					WillReturnRows(mock.NewRows([]string{"id", "status", "uploaded_at", "accrual", "withdrawn", "processed_at", "user_login"}).
+						AddRow(
+							"4242424242424242",
+							models.ProcessingOrder,
+							time.Date(2026, 5, 10, 12, 24, 45, 0, time.FixedZone("", 3*60*60)),
+							Ptr(float32(500)),
+							nil, nil,
+							"TestLogin"))
 				mock.ExpectBegin()
 				mock.ExpectExec("UPDATE users SET balance = balance - .+ WHERE login = .+2 AND balance >= .+").
 					WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg()).
@@ -649,8 +665,8 @@ var userBalanceWithdrawTests = []struct {
 			MockDBCalls: func(tt db.MockPostgresDBTestData) {
 				mock := tt.PgxPoolIface
 				mock.ExpectBegin()
-				mock.ExpectExec("UPDATE users SET balance = balance - .+ WHERE login = .+2 AND balance >= .+").
-					WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg()).
+				mock.ExpectQuery("SELECT .+ FROM orders WHERE id").
+					WithArgs("4242424242424242").
 					WillReturnError(fmt.Errorf("some error"))
 			},
 		},
@@ -734,22 +750,36 @@ var getUserWithdrawalsTest = []struct {
 		mockDB: db.MockPostgresDBTestData{
 			MockDBCalls: func(tt db.MockPostgresDBTestData) {
 				mock := tt.PgxPoolIface
-				mock.ExpectQuery("SELECT id, withdrawn, processed_at FROM orders").
+				// mock.ExpectQuery("SELECT id, withdrawn, processed_at FROM orders").
+				// 	WithArgs("TestLogin", pgxmock.AnyArg(), pgxmock.AnyArg()).
+				// 	WillReturnRows(mock.NewRows([]string{"id", "withdrawn", "processed_at"}).
+				// 		AddRow(
+				// 			"4242424242424242",
+				// 			123.5,
+				// 			time.Date(2026, 5, 10, 12, 24, 45, 0, time.FixedZone("", 3*60*60))))
+				// mock.ExpectQuery("SELECT id, withdrawn, processed_at FROM orders").
+				// 	WithArgs("TestLogin", pgxmock.AnyArg(), pgxmock.AnyArg()).
+				// 	WillReturnError(pgx.ErrNoRows)
+				mock.ExpectQuery("SELECT .+ FROM orders WHERE user_login").
 					WithArgs("TestLogin", pgxmock.AnyArg(), pgxmock.AnyArg()).
-					WillReturnRows(mock.NewRows([]string{"id", "withdrawn", "processed_at"}).
+					WillReturnRows(mock.NewRows([]string{"id", "status", "uploaded_at", "accrual", "withdrawn", "processed_at", "user_login"}).
 						AddRow(
 							"4242424242424242",
-							123.5,
-							time.Date(2026, 5, 10, 12, 24, 45, 0, time.FixedZone("", 3*60*60))))
-				mock.ExpectQuery("SELECT id, withdrawn, processed_at FROM orders").
+							models.ProcessedOrder,
+							time.Date(2026, 5, 10, 12, 24, 45, 0, time.FixedZone("", 3*60*60)),
+							nil,
+							Ptr(float32(123.5)),
+							Ptr(time.Date(2026, 5, 10, 14, 24, 45, 0, time.FixedZone("", 3*60*60))),
+							"TestLogin"))
+				mock.ExpectQuery("SELECT .+ FROM orders WHERE user_login").
 					WithArgs("TestLogin", pgxmock.AnyArg(), pgxmock.AnyArg()).
-					WillReturnError(pgx.ErrNoRows)
+					WillReturnRows(mock.NewRows([]string{"id", "status", "uploaded_at", "accrual", "withdrawn", "processed_at", "user_login"}))
 			},
 		},
 		want: want{
 			code:        http.StatusOK,
 			contentType: "application/json",
-			body:        `[{"order":"4242424242424242","sum":123.5,"processed_at":"2026-05-10T12:24:45+03:00"}]`,
+			body:        `[{"order":"4242424242424242","sum":123.5,"processed_at":"2026-05-10T14:24:45+03:00"}]`,
 		},
 	},
 	{
@@ -764,9 +794,9 @@ var getUserWithdrawalsTest = []struct {
 		mockDB: db.MockPostgresDBTestData{
 			MockDBCalls: func(tt db.MockPostgresDBTestData) {
 				mock := tt.PgxPoolIface
-				mock.ExpectQuery("SELECT id, withdrawn, processed_at FROM orders").
+				mock.ExpectQuery("SELECT .+ FROM orders WHERE user_login").
 					WithArgs("TestLogin", pgxmock.AnyArg(), pgxmock.AnyArg()).
-					WillReturnError(pgx.ErrNoRows)
+					WillReturnRows(mock.NewRows([]string{"id", "status", "uploaded_at", "accrual", "withdrawn", "processed_at", "user_login"}))
 			},
 		},
 		want: want{
@@ -800,7 +830,7 @@ var getUserWithdrawalsTest = []struct {
 		mockDB: db.MockPostgresDBTestData{
 			MockDBCalls: func(tt db.MockPostgresDBTestData) {
 				mock := tt.PgxPoolIface
-				mock.ExpectQuery("SELECT id, withdrawn, processed_at FROM orders").
+				mock.ExpectQuery("SELECT .+ FROM orders WHERE user_login").
 					WithArgs("TestLogin", pgxmock.AnyArg(), pgxmock.AnyArg()).
 					WillReturnError(fmt.Errorf("some error"))
 			},

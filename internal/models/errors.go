@@ -30,14 +30,15 @@ const (
 	CustomErrUserPasswordInvalidFormat         = 10004
 	CustomErrUserNotFound                      = 10005
 	CustomErrUserLoginPasswordNotMatch         = 10006
-	CustomErrOrderAlreadyUploaded              = 10007
-	CustomErrOrderAlreadyUploadedByAnotherUser = 10008
-	CustomErrOrderIDInvalidFormat              = 10009
-	CustomErrUserOrdersListEmpty               = 10010
-	CustomErrOrderNotFoundForWithdraw          = 10014
-	CustomErrUserBalanceNotEnough              = 10015
-	CustomErrWithdrawalsListEmpty              = 10016
-	CustomErrGetOrderFromAccrualService        = 10017
+	CustomErrOrderNotFound                     = 10007
+	CustomErrOrderAlreadyUploaded              = 10008
+	CustomErrOrderAlreadyUploadedByAnotherUser = 10009
+	CustomErrOrderIDInvalidFormat              = 10010
+	CustomErrUserOrdersListEmpty               = 10011
+	CustomErrOrderNotFoundForWithdraw          = 10012
+	CustomErrUserBalanceNotEnough              = 10013
+	CustomErrWithdrawalsListEmpty              = 10014
+	CustomErrGetOrderFromAccrualService        = 10015
 )
 
 // UnexpectedErrorMessage message for unexpecter app errors, usualy leads to returning InternalServerError
