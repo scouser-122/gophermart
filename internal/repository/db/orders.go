@@ -16,6 +16,8 @@ type PostgresOrderStorage struct {
 	repo     *GenericRepository[models.Order]
 }
 
+const ordersPageSize = 10
+
 // NewPostgresOrderStorage creates Postgres order storage
 func NewPostgresOrderStorage(db *PostgresDatabase) *PostgresOrderStorage {
 	mapper := func(row pgx.Row) (*models.Order, error) {
@@ -98,26 +100,18 @@ func (s *PostgresOrderStorage) Update(ctx context.Context, order *models.Order, 
 func (s *PostgresOrderStorage) GetAllForUser(ctx context.Context, userLogin string) ([]*models.Order, error) {
 	logger := logger.GetLoggerFromContext(ctx)
 	result := []*models.Order{}
-	page := 0
-	limit := 10
-	for {
-		offset := page * limit
-		orders, err := s.repo.GetAllConditional(
-			ctx,
-			"WHERE user_login = $1",
-			[]any{userLogin},
-			"uploaded_at DESC",
-			limit, offset,
-		)
+	for orders, err := range s.repo.GetAllConditional(
+		ctx,
+		"WHERE user_login = $1",
+		[]any{userLogin},
+		"uploaded_at DESC",
+		ordersPageSize,
+	) {
 		if err != nil {
 			logger.Sugar().Error(err)
-			return nil, err
-		}
-		if len(orders) == 0 {
-			break
+			return []*models.Order{}, err
 		}
 		result = append(result, orders...)
-		page++
 	}
 	return result, nil
 }
@@ -169,23 +163,16 @@ func (s *PostgresOrderStorage) WithdrawSum(ctx context.Context, ID string, sum f
 func (s *PostgresOrderStorage) WithdrawalsForUser(ctx context.Context, userLogin string) ([]models.WithdrawalResponse, error) {
 	logger := logger.GetLoggerFromContext(ctx)
 	result := []models.WithdrawalResponse{}
-	page := 0
-	limit := 10
-	for {
-		offset := page * limit
-		orders, err := s.repo.GetAllConditional(
-			ctx,
-			"WHERE user_login = $1 AND withdrawn IS NOT NULL",
-			[]any{userLogin},
-			"processed_at DESC",
-			limit, offset,
-		)
+	for orders, err := range s.repo.GetAllConditional(
+		ctx,
+		"WHERE user_login = $1 AND withdrawn IS NOT NULL",
+		[]any{userLogin},
+		"processed_at DESC",
+		ordersPageSize,
+	) {
 		if err != nil {
 			logger.Sugar().Error(err)
-			return nil, err
-		}
-		if len(orders) == 0 {
-			break
+			return []models.WithdrawalResponse{}, err
 		}
 		for _, o := range orders {
 			result = append(result, models.WithdrawalResponse{
@@ -194,7 +181,6 @@ func (s *PostgresOrderStorage) WithdrawalsForUser(ctx context.Context, userLogin
 				ProcessedAt: *o.ProcessedAt,
 			})
 		}
-		page++
 	}
 	return result, nil
 }

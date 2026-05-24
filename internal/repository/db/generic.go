@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"fmt"
+	"iter"
 	"slices"
 	"strings"
 
@@ -82,66 +83,70 @@ func (r *GenericRepository[T]) GetByID(ctx context.Context, id string) (*T, erro
 	return entity, err
 }
 
-// GetAll returns all entities
-func (r *GenericRepository[T]) GetAll(ctx context.Context, limit, offset int) ([]*T, error) {
-	query := fmt.Sprintf("SELECT * FROM %s ORDER BY %s LIMIT $1 OFFSET $2", r.table, r.keyName)
-	rows, err := r.db.Query(ctx, query, limit, offset)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var results []*T
-	for rows.Next() {
-		row := &pgxRowAdapter{rows: rows}
-		entity, err := r.mapper(row)
-		if err != nil {
-			return nil, err
-		}
-		results = append(results, entity)
-	}
-	return results, rows.Err()
-}
-
 // GetAllConditional returns all entities which met condition ordered by specified field
 func (r *GenericRepository[T]) GetAllConditional(
 	ctx context.Context,
 	condition string,
 	conditionFields []any,
 	orderBy string,
-	limit, offset int,
-) ([]*T, error) {
-	var args []interface{}
-	argCounter := 0
-	for i := 0; i < len(conditionFields); i++ {
-		argCounter++
-		args = append(args, conditionFields[i])
-	}
-	args = append(args, limit)
-	argCounter++
-	limitArg := fmt.Sprintf("$%d", argCounter)
+	pageSize int,
+) iter.Seq2[[]*T, error] {
+	return func(yield func([]*T, error) bool) {
+		offset := 0
+		for {
+			var args []interface{}
+			argCounter := 0
+			for i := 0; i < len(conditionFields); i++ {
+				argCounter++
+				args = append(args, conditionFields[i])
+			}
+			args = append(args, pageSize)
+			argCounter++
+			limitArg := fmt.Sprintf("$%d", argCounter)
 
-	args = append(args, offset)
-	argCounter++
-	offsetArg := fmt.Sprintf("$%d", argCounter)
+			args = append(args, offset)
+			argCounter++
+			offsetArg := fmt.Sprintf("$%d", argCounter)
 
-	query := fmt.Sprintf("SELECT * FROM %s %s ORDER BY %s LIMIT %s OFFSET %s", r.table, condition, orderBy, limitArg, offsetArg)
-	rows, err := r.db.Query(ctx, query, args...)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
+			query := fmt.Sprintf("SELECT * FROM %s %s ORDER BY %s LIMIT %s OFFSET %s", r.table, condition, orderBy, limitArg, offsetArg)
+			rows, err := r.db.Query(ctx, query, args...)
+			if err != nil {
+				yield(nil, fmt.Errorf("query failed at offset %d: %w", offset, err))
+				return
+			}
 
-	var results []*T
-	for rows.Next() {
-		row := &pgxRowAdapter{rows: rows}
-		entity, err := r.mapper(row)
-		if err != nil {
-			return nil, err
+			entities := make([]*T, 0, pageSize)
+
+			for rows.Next() {
+				row := &pgxRowAdapter{rows: rows}
+				entity, err := r.mapper(row)
+				if err != nil {
+					rows.Close()
+					yield(nil, fmt.Errorf("scan failed at offset %d: %w", offset, err))
+					return
+				}
+				entities = append(entities, entity)
+			}
+
+			if err := rows.Err(); err != nil {
+				rows.Close()
+				yield(nil, fmt.Errorf("rows iteration error at offset %d: %w", offset, err))
+				return
+			}
+
+			rows.Close()
+
+			if len(entities) == 0 {
+				return
+			}
+
+			if !yield(entities, nil) {
+				return
+			}
+
+			offset += pageSize
 		}
-		results = append(results, entity)
 	}
-	return results, rows.Err()
 }
 
 // CustomQuery makes custom query request and returns result
