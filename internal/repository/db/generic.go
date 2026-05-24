@@ -8,6 +8,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/scouser-122/gophermart/internal/config"
 )
 
 // QueryExecutor interface for DB queries
@@ -19,19 +20,26 @@ type QueryExecutor interface {
 
 // GenericRepository generic Postgres repository to work with any entity
 type GenericRepository[T any] struct {
-	db      QueryExecutor
-	table   string
-	keyName string
-	mapper  func(row pgx.Row) (*T, error)
+	db          QueryExecutor
+	retryConfig config.RetryConfig
+	table       string
+	keyName     string
+	mapper      func(row pgx.Row) (*T, error)
 }
 
 // NewGenericRepository creates generic repository
-func NewGenericRepository[T any](db QueryExecutor, table string, keyName string, mapper func(row pgx.Row) (*T, error)) *GenericRepository[T] {
+func NewGenericRepository[T any](
+	db *PostgresDatabase,
+	table string,
+	keyName string,
+	mapper func(row pgx.Row) (*T, error),
+) *GenericRepository[T] {
 	return &GenericRepository[T]{
-		db:      db,
-		table:   table,
-		keyName: keyName,
-		mapper:  mapper,
+		db:          db,
+		retryConfig: db.Config.RetryConfig,
+		table:       table,
+		keyName:     keyName,
+		mapper:      mapper,
 	}
 }
 
@@ -61,7 +69,17 @@ func (r *GenericRepository[T]) Update(ctx context.Context, query string, args ..
 func (r *GenericRepository[T]) GetByID(ctx context.Context, id string) (*T, error) {
 	query := fmt.Sprintf("SELECT * FROM %s WHERE %s = $1", r.table, r.keyName)
 	row := r.db.QueryRow(ctx, query, id)
-	return r.mapper(row)
+	var entity *T
+	err := DataBaseRequestRetry(
+		ctx,
+		r.retryConfig,
+		func() error {
+			var err error
+			entity, err = r.mapper(row)
+			return err
+		},
+	)
+	return entity, err
 }
 
 // GetAll returns all entities
@@ -134,12 +152,24 @@ func (r *GenericRepository[T]) CustomQuery(
 	args ...interface{},
 ) error {
 	row := r.db.QueryRow(ctx, query, args...)
-	return mapper(row)
+	return DataBaseRequestRetry(
+		ctx,
+		r.retryConfig,
+		func() error {
+			return mapper(row)
+		},
+	)
 }
 
 // WithTx returns new generic repository using transaction
 func (r *GenericRepository[T]) WithTx(tx pgx.Tx) *GenericRepository[T] {
-	return NewGenericRepository(tx, r.table, r.keyName, r.mapper)
+	return &GenericRepository[T]{
+		db:          r.db,
+		retryConfig: r.retryConfig,
+		table:       r.table,
+		keyName:     r.keyName,
+		mapper:      r.mapper,
+	}
 }
 
 // pgxRowAdapter - adapter for pgx.Rows

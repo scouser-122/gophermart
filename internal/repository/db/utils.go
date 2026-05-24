@@ -29,3 +29,14 @@ func (u *PostgresRepositoryUtils) CreateTransaction(ctx context.Context) (models
 	}
 	return tx, nil
 }
+
+// CommitTransaction commits transaction changes to DB
+func (u *PostgresRepositoryUtils) CommitTransaction(ctx context.Context, tx models.GenericTransaction) error {
+	return DataBaseRequestRetry(
+		ctx,
+		u.Database.Config.RetryConfig,
+		func() error {
+			return tx.Commit(ctx)
+		},
+	)
+}

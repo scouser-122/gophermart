@@ -84,7 +84,7 @@ func (service *OrdersService) Upload(ctx context.Context, orderID string, userLo
 					return nil, err
 				}
 			}
-			err = tx.Commit(ctx)
+			err = service.repositoryUtils.CommitTransaction(ctx, tx)
 			if err != nil {
 				return nil, err
 			}
@@ -141,7 +141,7 @@ func (service *OrdersService) updateChangedOrder(
 	if err != nil {
 		return nil, err
 	}
-	err = tx.Commit(ctx)
+	err = service.repositoryUtils.CommitTransaction(ctx, tx)
 	if err != nil {
 		return nil, err
 	}
@@ -196,7 +196,7 @@ func (service *OrdersService) WithdrawBalanceForOrder(ctx context.Context, reque
 	if err != nil {
 		return err
 	}
-	err = tx.Commit(ctx)
+	err = service.repositoryUtils.CommitTransaction(ctx, tx)
 	if err != nil {
 		return err
 	}

@@ -16,7 +16,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/scouser-122/gophermart/internal/config"
 	"github.com/scouser-122/gophermart/internal/logger"
-	"github.com/wcamarao/pmx"
 )
 
 // DBPoolInterface specifies interface to interact with DB via connection pool
@@ -129,7 +128,7 @@ func (db *PostgresDatabase) Ping(ctx context.Context) error {
 	if isNil(db.pool) {
 		return fmt.Errorf("database connection was not opened")
 	}
-	return config.DataBaseRequestRetry(
+	return DataBaseRequestRetry(
 		ctx,
 		db.Config.RetryConfig,
 		func() error {
@@ -144,7 +143,7 @@ func (db *PostgresDatabase) Exec(ctx context.Context, query string, args ...any)
 		return pgconn.CommandTag{}, fmt.Errorf("database connection was not opened")
 	}
 	var commandTag pgconn.CommandTag
-	err := config.DataBaseRequestRetry(
+	err := DataBaseRequestRetry(
 		ctx,
 		db.Config.RetryConfig,
 		func() error {
@@ -162,7 +161,7 @@ func (db *PostgresDatabase) Query(ctx context.Context, query string, args ...any
 		return nil, fmt.Errorf("database connection was not opened")
 	}
 	var rows pgx.Rows
-	err := config.DataBaseRequestRetry(
+	err := DataBaseRequestRetry(
 		ctx,
 		db.Config.RetryConfig,
 		func() error {
@@ -179,46 +178,13 @@ func (db *PostgresDatabase) QueryRow(ctx context.Context, query string, args ...
 	return db.pool.QueryRow(ctx, query, args...)
 }
 
-// Select takes one object of passed pointer type by request specified parameters
-func (db *PostgresDatabase) Select(ctx context.Context, dst any, query string, args ...any) error {
-	if isNil(db.pool) {
-		return fmt.Errorf("database connection was not opened")
-	}
-	err := config.DataBaseRequestRetry(
-		ctx,
-		db.Config.RetryConfig,
-		func() error {
-			return pmx.Select(ctx, db.pool, dst, query, args...)
-		},
-	)
-	return err
-}
-
-// Insert inserts one record with object of passed pointer type
-func (db *PostgresDatabase) Insert(ctx context.Context, entity any) (pgconn.CommandTag, error) {
-	if isNil(db.pool) {
-		return pgconn.CommandTag{}, fmt.Errorf("database connection was not opened")
-	}
-	var commandTag pgconn.CommandTag
-	err := config.DataBaseRequestRetry(
-		ctx,
-		db.Config.RetryConfig,
-		func() error {
-			var err error
-			commandTag, err = pmx.Insert(ctx, db.pool, entity)
-			return err
-		},
-	)
-	return commandTag, err
-}
-
 // Begin creates DB transaction
 func (db *PostgresDatabase) Begin(ctx context.Context) (pgx.Tx, error) {
 	if isNil(db.pool) {
 		return nil, fmt.Errorf("database connection was not opened")
 	}
 	var tx pgx.Tx
-	err := config.DataBaseRequestRetry(
+	err := DataBaseRequestRetry(
 		ctx,
 		db.Config.RetryConfig,
 		func() error {

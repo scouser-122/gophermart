@@ -10,4 +10,7 @@ import (
 type RepositoryUtils interface {
 	// CreateTransaction creates transaction to be used in several operations
 	CreateTransaction(ctx context.Context) (models.GenericTransaction, error)
+
+	// CommitTransaction commits transaction changes to DB
+	CommitTransaction(ctx context.Context, tx models.GenericTransaction) error
 }
