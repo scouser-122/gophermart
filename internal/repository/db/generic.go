@@ -170,7 +170,7 @@ func (r *GenericRepository[T]) CustomQuery(
 // WithTx returns new generic repository using transaction
 func (r *GenericRepository[T]) WithTx(tx pgx.Tx) *GenericRepository[T] {
 	return &GenericRepository[T]{
-		db:          r.db,
+		db:          tx,
 		retryConfig: r.retryConfig,
 		table:       r.table,
 		keyName:     r.keyName,
