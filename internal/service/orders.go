@@ -39,11 +39,11 @@ func NewOrdersService(
 
 // Upload runs upload process for specified order
 func (service *OrdersService) Upload(ctx context.Context, orderID string, userLogin string) (*models.Order, error) {
-	logger := logger.GetLoggerFromContext(ctx)
+	logger := logger.GetSlogLoggerFromContext(ctx)
 	isValid := luhnmod10.Valid(orderID)
 	if !isValid {
 		err := &models.CustomErr{Code: models.CustomErrOrderIDInvalidFormat}
-		logger.Sugar().Error(err)
+		logger.Error(err.Error())
 		return nil, err
 	}
 	status := models.NewOrder
@@ -58,11 +58,11 @@ func (service *OrdersService) Upload(ctx context.Context, orderID string, userLo
 	if order != nil {
 		if order.UserLogin == userLogin {
 			err = &models.CustomErr{Code: models.CustomErrOrderAlreadyUploaded}
-			logger.Sugar().Error(err)
+			logger.Error(err.Error())
 			return nil, err
 		} else {
 			err = &models.CustomErr{Code: models.CustomErrOrderAlreadyUploadedByAnotherUser}
-			logger.Sugar().Error(err)
+			logger.Error(err.Error())
 			return nil, err
 		}
 	} else if err != nil {
@@ -98,14 +98,14 @@ func (service *OrdersService) Upload(ctx context.Context, orderID string, userLo
 
 // GetUserOrders returns slice of orders for user with specified login
 func (service *OrdersService) GetUserOrders(ctx context.Context, userLogin string) ([]*models.Order, error) {
-	logger := logger.GetLoggerFromContext(ctx)
+	logger := logger.GetSlogLoggerFromContext(ctx)
 	orders, err := service.ordersStorage.GetAllForUser(ctx, userLogin)
 	if err != nil {
 		return []*models.Order{}, err
 	}
 	if len(orders) == 0 {
 		err = &models.CustomErr{Code: models.CustomErrUserOrdersListEmpty}
-		logger.Sugar().Error(err)
+		logger.Error(err.Error())
 		return []*models.Order{}, err
 	}
 	for i, o := range orders {
@@ -150,11 +150,11 @@ func (service *OrdersService) updateChangedOrder(
 
 // WithdrawBalanceForOrder withdraw user's loyalty points from balance for order with specified ID
 func (service *OrdersService) WithdrawBalanceForOrder(ctx context.Context, request *models.WithdrawBalanceRequest, login string) error {
-	logger := logger.GetLoggerFromContext(ctx)
+	logger := logger.GetSlogLoggerFromContext(ctx)
 	isValid := luhnmod10.Valid(request.Order)
 	if !isValid {
 		err := &models.CustomErr{Code: models.CustomErrOrderIDInvalidFormat}
-		logger.Sugar().Error(err)
+		logger.Error(err.Error())
 		return err
 	}
 	order, err := service.ordersStorage.Get(ctx, request.Order)
@@ -205,14 +205,14 @@ func (service *OrdersService) WithdrawBalanceForOrder(ctx context.Context, reque
 
 // WithdrawalsForUser returns slice of withdrawals data for specified user
 func (service *OrdersService) WithdrawalsForUser(ctx context.Context, login string) ([]models.WithdrawalResponse, error) {
-	logger := logger.GetLoggerFromContext(ctx)
+	logger := logger.GetSlogLoggerFromContext(ctx)
 	withdrawals, err := service.ordersStorage.WithdrawalsForUser(ctx, login)
 	if err != nil {
 		return []models.WithdrawalResponse{}, err
 	}
 	if len(withdrawals) == 0 {
 		err = &models.CustomErr{Code: models.CustomErrWithdrawalsListEmpty}
-		logger.Sugar().Error(err)
+		logger.Error(err.Error())
 		return withdrawals, err
 	}
 	return withdrawals, nil

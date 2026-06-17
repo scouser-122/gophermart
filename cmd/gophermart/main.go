@@ -3,7 +3,11 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
+	"log/slog"
 	"net/http"
+	"os"
+	"time"
 
 	"github.com/scouser-122/gophermart/internal/config"
 	"github.com/scouser-122/gophermart/internal/handler"
@@ -16,13 +20,23 @@ func main() {
 	serverConfig := config.DefaultServerConfig()
 	config.ParseFlags(&serverConfig)
 	config.ParseEnvVariables(&serverConfig)
-	if err := logger.Initialize(serverConfig.LogLevel, serverConfig.Environment); err != nil {
-		panic(err)
+
+	var jsonWriter io.Writer
+	if serverConfig.Environment == "prod" {
+		file, err := os.OpenFile("app.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+		if err != nil {
+			panic(err)
+		}
+		defer file.Close()
+		autoFlushWriter := logger.NewAutoFlushWriter(file, 1024, 100*time.Millisecond)
+		defer autoFlushWriter.Close()
+		jsonWriter = autoFlushWriter
 	}
+	logger.Initialize(serverConfig.LogLevel, os.Stdout, jsonWriter)
 
 	database := db.NewPostgresDB(serverConfig)
 	if err := database.Open(); err != nil {
-		logger.Sugar.Errorf("cannot connect to database: %w", err)
+		slog.Error("cannot connect to database", "err", err)
 		panic(err)
 	}
 	if err := database.Ping(context.Background()); err != nil {
@@ -42,6 +56,10 @@ func main() {
 	handlers := handler.CreateHandlers(userService, ordersService, jwtService)
 	router := handler.CreateChiRouter(&handlers, &serverConfig, jwtService)
 
-	logger.Sugar.Infof("starting server on http://%s", serverConfig.RunAddr)
-	logger.Sugar.Fatal(http.ListenAndServe(serverConfig.RunAddr, router))
+	slog.Info("starting server", "address", serverConfig.RunAddr)
+	err := http.ListenAndServe(serverConfig.RunAddr, router)
+	if err != nil {
+		slog.Error(err.Error())
+		panic(err)
+	}
 }

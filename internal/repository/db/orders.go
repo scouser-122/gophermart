@@ -51,7 +51,7 @@ func (s *PostgresOrderStorage) Create(
 	accrual *float32,
 	userLogin string,
 ) (*models.Order, error) {
-	logger := logger.GetLoggerFromContext(ctx)
+	logger := logger.GetSlogLoggerFromContext(ctx)
 	repo := s.repo
 	tx := models.GetTransactionFromContext(ctx)
 	if tx != nil {
@@ -59,7 +59,7 @@ func (s *PostgresOrderStorage) Create(
 	}
 	order, err := repo.Create(ctx, "id,status,uploaded_at,accrual,user_login", ID, status, time.Now(), accrual, userLogin)
 	if err != nil {
-		logger.Sugar().Error(err)
+		logger.Error(err.Error())
 		return nil, err
 	}
 	return order, nil
@@ -67,14 +67,14 @@ func (s *PostgresOrderStorage) Create(
 
 // Get obtains order from storage
 func (s *PostgresOrderStorage) Get(ctx context.Context, ID string) (*models.Order, error) {
-	logger := logger.GetLoggerFromContext(ctx)
+	logger := logger.GetSlogLoggerFromContext(ctx)
 	order, err := s.repo.GetByID(ctx, ID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			err = &models.CustomErr{Code: models.CustomErrOrderNotFound}
 			return nil, err
 		}
-		logger.Sugar().Error(err)
+		logger.Error(err.Error())
 		return nil, err
 	}
 	return order, nil
@@ -82,7 +82,7 @@ func (s *PostgresOrderStorage) Get(ctx context.Context, ID string) (*models.Orde
 
 // Update updates order data
 func (s *PostgresOrderStorage) Update(ctx context.Context, order *models.Order, userLogin string) error {
-	logger := logger.GetLoggerFromContext(ctx)
+	logger := logger.GetSlogLoggerFromContext(ctx)
 	repo := s.repo
 	tx := models.GetTransactionFromContext(ctx)
 	if tx != nil {
@@ -90,7 +90,7 @@ func (s *PostgresOrderStorage) Update(ctx context.Context, order *models.Order, 
 	}
 	_, err := repo.Update(ctx, "UPDATE orders SET status = $1, accrual = $2 WHERE id = $3", order.Status, order.Accrual, userLogin)
 	if err != nil {
-		logger.Sugar().Error(err)
+		logger.Error(err.Error())
 		return err
 	}
 	return err
@@ -98,7 +98,7 @@ func (s *PostgresOrderStorage) Update(ctx context.Context, order *models.Order, 
 
 // GetAllForUser returns all orders for specified user
 func (s *PostgresOrderStorage) GetAllForUser(ctx context.Context, userLogin string) ([]*models.Order, error) {
-	logger := logger.GetLoggerFromContext(ctx)
+	logger := logger.GetSlogLoggerFromContext(ctx)
 	result := []*models.Order{}
 	for orders, err := range s.repo.GetAllConditional(
 		ctx,
@@ -108,7 +108,7 @@ func (s *PostgresOrderStorage) GetAllForUser(ctx context.Context, userLogin stri
 		ordersPageSize,
 	) {
 		if err != nil {
-			logger.Sugar().Error(err)
+			logger.Error(err.Error())
 			return []*models.Order{}, err
 		}
 		result = append(result, orders...)
@@ -118,14 +118,14 @@ func (s *PostgresOrderStorage) GetAllForUser(ctx context.Context, userLogin stri
 
 // GetWithdrawnForUser return total withdrawn points from all orders for specified user
 func (s *PostgresOrderStorage) GetWithdrawnForUser(ctx context.Context, login string) (float32, error) {
-	logger := logger.GetLoggerFromContext(ctx)
+	logger := logger.GetSlogLoggerFromContext(ctx)
 	var result *float32
 	mapper := func(row pgx.Row) error {
 		return row.Scan(&result)
 	}
 	err := s.repo.CustomQuery(ctx, mapper, "SELECT SUM(withdrawn) FROM orders WHERE user_login = $1", login)
 	if err != nil {
-		logger.Sugar().Error(err)
+		logger.Error(err.Error())
 		return 0.0, err
 	}
 	if result == nil {
@@ -136,7 +136,7 @@ func (s *PostgresOrderStorage) GetWithdrawnForUser(ctx context.Context, login st
 
 // WithdrawSum set's withdrawn amount for specified order
 func (s *PostgresOrderStorage) WithdrawSum(ctx context.Context, ID string, sum float32, login string) error {
-	logger := logger.GetLoggerFromContext(ctx)
+	logger := logger.GetSlogLoggerFromContext(ctx)
 	repo := s.repo
 	tx := models.GetTransactionFromContext(ctx)
 	if tx != nil {
@@ -148,12 +148,12 @@ func (s *PostgresOrderStorage) WithdrawSum(ctx context.Context, ID string, sum f
 		sum, ID, login,
 	)
 	if err != nil {
-		logger.Sugar().Error(err)
+		logger.Error(err.Error())
 		return err
 	}
 	if tag.RowsAffected() == 0 {
 		err = &models.CustomErr{Code: models.CustomErrOrderNotFoundForWithdraw}
-		logger.Sugar().Error(err)
+		logger.Error(err.Error())
 		return err
 	}
 	return err
@@ -161,7 +161,7 @@ func (s *PostgresOrderStorage) WithdrawSum(ctx context.Context, ID string, sum f
 
 // WithdrawalsForUser returns slice of withdrawals data for specified user
 func (s *PostgresOrderStorage) WithdrawalsForUser(ctx context.Context, userLogin string) ([]models.WithdrawalResponse, error) {
-	logger := logger.GetLoggerFromContext(ctx)
+	logger := logger.GetSlogLoggerFromContext(ctx)
 	result := []models.WithdrawalResponse{}
 	for orders, err := range s.repo.GetAllConditional(
 		ctx,
@@ -171,7 +171,7 @@ func (s *PostgresOrderStorage) WithdrawalsForUser(ctx context.Context, userLogin
 		ordersPageSize,
 	) {
 		if err != nil {
-			logger.Sugar().Error(err)
+			logger.Error(err.Error())
 			return []models.WithdrawalResponse{}, err
 		}
 		for _, o := range orders {

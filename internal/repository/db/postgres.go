@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -15,7 +16,6 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/scouser-122/gophermart/internal/config"
-	"github.com/scouser-122/gophermart/internal/logger"
 )
 
 // DBPoolInterface specifies interface to interact with DB via connection pool
@@ -69,7 +69,7 @@ func (db *PostgresDatabase) Open() error {
 		return fmt.Errorf("failed to ping database: %w", err)
 	}
 
-	logger.Sugar.Info("successfully connected to DB")
+	slog.Info("successfully connected to DB")
 
 	err = db.runMigrations()
 	if err != nil {
@@ -99,7 +99,7 @@ func (db *PostgresDatabase) runMigrations() error {
 		return err
 	}
 
-	logger.Sugar.Info("DB migrations completed successfully")
+	slog.Info("DB migrations completed successfully")
 	return nil
 }
 

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 
 	"github.com/pkg/errors"
@@ -12,7 +13,6 @@ import (
 	"github.com/scouser-122/gophermart/internal/logger"
 	"github.com/scouser-122/gophermart/internal/models"
 	"github.com/scouser-122/gophermart/internal/service"
-	"go.uber.org/zap"
 )
 
 // UsersHandler specifies http request handler for requests to Users service
@@ -35,11 +35,11 @@ func NewUsersHandler(
 // HandleRegister processes user registration request
 func (h *UsersHandler) HandleRegister(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("content-type", "application/json")
-	logger := logger.GetLoggerFromContext(req.Context())
+	logger := logger.GetSlogLoggerFromContext(req.Context())
 
 	bodyBuf, err := io.ReadAll(req.Body)
 	if err != nil {
-		logger.Error("cannot read request body", zap.Error(err))
+		logger.Error("cannot read request body", "err", err)
 		res.WriteHeader(http.StatusBadRequest)
 		res.Write(models.NewErrorResponseBuffer(models.UnexpectedErrorMessage))
 		return
@@ -47,7 +47,7 @@ func (h *UsersHandler) HandleRegister(res http.ResponseWriter, req *http.Request
 
 	var user models.User
 	if err := json.Unmarshal(bodyBuf, &user); err != nil {
-		logger.Error("cannot decode request json body", zap.Error(err))
+		logger.Error("cannot decode request json body", "err", err)
 		res.WriteHeader(http.StatusBadRequest)
 		res.Write(models.NewErrorResponseBuffer(models.UnexpectedErrorMessage))
 		return
@@ -71,7 +71,7 @@ func (h *UsersHandler) HandleRegister(res http.ResponseWriter, req *http.Request
 
 	authToken, err := h.jwtService.GenerateJWT(registeredUser.Login)
 	if err != nil {
-		logger.Error("error generating JWT token", zap.Error(err))
+		logger.Error("error generating JWT token", "err", err)
 		res.WriteHeader(http.StatusInternalServerError)
 		res.Write(models.NewErrorResponseBuffer(models.UnexpectedErrorMessage))
 		return
@@ -80,7 +80,7 @@ func (h *UsersHandler) HandleRegister(res http.ResponseWriter, req *http.Request
 	res.Header().Add("Authorization", fmt.Sprintf("Bearer %s", authToken))
 
 	successMessage := "user successfully registered"
-	logger.Sugar().Info(successMessage, zap.String("login", registeredUser.Login))
+	logger.Info(successMessage, slog.String("login", registeredUser.Login))
 	res.WriteHeader(http.StatusOK)
 	res.Write(models.NewSuccessResponseBuffer(successMessage))
 }
@@ -107,11 +107,11 @@ func processCustomErrorRegister(customErr *models.CustomErr, res http.ResponseWr
 // HandleLogin processes user login request
 func (h *UsersHandler) HandleLogin(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("content-type", "application/json")
-	logger := logger.GetLoggerFromContext(req.Context())
+	logger := logger.GetSlogLoggerFromContext(req.Context())
 
 	bodyBuf, err := io.ReadAll(req.Body)
 	if err != nil {
-		logger.Error("cannot read request body", zap.Error(err))
+		logger.Error("cannot read request body", "err", err)
 		res.WriteHeader(http.StatusBadRequest)
 		res.Write(models.NewErrorResponseBuffer(models.UnexpectedErrorMessage))
 		return
@@ -119,7 +119,7 @@ func (h *UsersHandler) HandleLogin(res http.ResponseWriter, req *http.Request) {
 
 	var user models.User
 	if err := json.Unmarshal(bodyBuf, &user); err != nil {
-		logger.Error("cannot decode request json body", zap.Error(err))
+		logger.Error("cannot decode request json body", "err", err)
 		res.WriteHeader(http.StatusBadRequest)
 		res.Write(models.NewErrorResponseBuffer(models.UnexpectedErrorMessage))
 		return
@@ -142,7 +142,7 @@ func (h *UsersHandler) HandleLogin(res http.ResponseWriter, req *http.Request) {
 
 	authToken, err := h.jwtService.GenerateJWT(user.Login)
 	if err != nil {
-		logger.Error("error generating JWT token", zap.Error(err))
+		logger.Error("error generating JWT token", "err", err)
 		res.WriteHeader(http.StatusInternalServerError)
 		res.Write(models.NewErrorResponseBuffer(models.UnexpectedErrorMessage))
 		return
@@ -151,7 +151,7 @@ func (h *UsersHandler) HandleLogin(res http.ResponseWriter, req *http.Request) {
 	res.Header().Add("Authorization", fmt.Sprintf("Bearer %s", authToken))
 
 	successMessage := "successfully logged in"
-	logger.Sugar().Info(successMessage, zap.String("login", user.Login))
+	logger.Info(successMessage, slog.String("login", user.Login))
 	res.WriteHeader(http.StatusOK)
 	res.Write(models.NewSuccessResponseBuffer(successMessage))
 }
@@ -184,7 +184,7 @@ func processCustomErrorLogin(customErr *models.CustomErr, res http.ResponseWrite
 // HandleUsersBalance processes get user balance request
 func (h *UsersHandler) HandleUsersBalance(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("content-type", "application/json")
-	logger := logger.GetLoggerFromContext(req.Context())
+	logger := logger.GetSlogLoggerFromContext(req.Context())
 
 	userLogin, ok := req.Context().Value(UserLoginContextKey).(string)
 	if !ok {
@@ -204,12 +204,12 @@ func (h *UsersHandler) HandleUsersBalance(res http.ResponseWriter, req *http.Req
 	var buf bytes.Buffer
 	enc := json.NewEncoder(&buf)
 	if err := enc.Encode(usersBalance); err != nil {
-		logger.Sugar().Error(err)
+		logger.Error("cannot endcode request body", "err", err)
 		res.WriteHeader(http.StatusInternalServerError)
 		res.Write(models.NewErrorResponseBuffer(models.UnexpectedErrorMessage))
 		return
 	}
-	logger.Sugar().Info("users balance successfully obtained", zap.String("login", userLogin))
+	logger.Info("users balance successfully obtained", slog.String("login", userLogin))
 	res.WriteHeader(http.StatusOK)
 	res.Write(buf.Bytes())
 }
