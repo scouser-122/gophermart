@@ -3,12 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
-	"io"
 	"log/slog"
 	"net/http"
-	"os"
-	"time"
 
+	"github.com/alchemy/rotoslog"
 	"github.com/scouser-122/gophermart/internal/config"
 	"github.com/scouser-122/gophermart/internal/handler"
 	"github.com/scouser-122/gophermart/internal/logger"
@@ -21,18 +19,20 @@ func main() {
 	config.ParseFlags(&serverConfig)
 	config.ParseEnvVariables(&serverConfig)
 
-	var jsonWriter io.Writer
+	var fileHandler *rotoslog.Handler
 	if serverConfig.Environment == "prod" {
-		file, err := os.OpenFile("app.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+		var err error
+		fileHandler, err = rotoslog.NewHandler(
+			rotoslog.FilePrefix("gophermart-"),
+			rotoslog.MaxFileSize(32*1024*1024),
+			rotoslog.MaxRotatedFiles(3),
+		)
 		if err != nil {
 			panic(err)
 		}
-		defer file.Close()
-		autoFlushWriter := logger.NewAutoFlushWriter(file, 1024, 100*time.Millisecond)
-		defer autoFlushWriter.Close()
-		jsonWriter = autoFlushWriter
+		defer fileHandler.Close()
 	}
-	logger.Initialize(serverConfig.LogLevel, os.Stdout, jsonWriter)
+	logger.Initialize(serverConfig.LogLevel, fileHandler)
 
 	database := db.NewPostgresDB(serverConfig)
 	if err := database.Open(); err != nil {
