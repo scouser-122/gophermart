@@ -9,13 +9,11 @@ import (
 	"github.com/scouser-122/gophermart/internal/logger"
 	"github.com/scouser-122/gophermart/internal/models"
 	"github.com/scouser-122/gophermart/internal/repository"
-	"github.com/scouser-122/gophermart/internal/repository/db"
 	"github.com/scouser-122/gophermart/internal/utils"
 )
 
 // OrdersService service to work with orders
 type OrdersService struct {
-	database        *db.PostgresDatabase
 	ordersStorage   repository.OrdersStorage
 	usersStorage    repository.UsersStorage
 	repositoryUtils repository.RepositoryUtils
