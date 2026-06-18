@@ -27,7 +27,7 @@ func NewAccrualService(serverConfig *config.ServerConfig) *AccrualService {
 // GetOrderData obtains order data by id from loyalty points calculation system,
 // return pointer to order data or nil if order is absent in system or request failed
 func (service *AccrualService) GetOrderData(ctx context.Context, orderID string) *models.Order {
-	logger := logger.GetLoggerFromContext(ctx)
+	logger := logger.GetSlogLoggerFromContext(ctx)
 	client := resty.New()
 	client.SetRetryCount(3).
 		SetRetryWaitTime(1 * time.Second).
@@ -50,10 +50,10 @@ func (service *AccrualService) GetOrderData(ctx context.Context, orderID string)
 		SetResult(&order).
 		Get(url)
 	if err != nil {
-		logger.Sugar().Error(err)
+		logger.Error(err.Error())
 		return nil
 	}
-	logger.Sugar().Infof("accrual service response status: %d", resp.StatusCode())
+	logger.Info("accrual service response", "status", resp.StatusCode())
 	if resp.StatusCode() == http.StatusOK {
 		if order.Status == models.RegisteredOrder {
 			order.Status = models.NewOrder

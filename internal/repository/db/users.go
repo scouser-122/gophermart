@@ -42,18 +42,18 @@ func NewPostgresUserStorage(db *PostgresDatabase) *PostgresUserStorage {
 // Create creates new user,
 // returns error if user with specified login already exists or process failed
 func (s *PostgresUserStorage) Create(ctx context.Context, login string, password string) (*models.User, error) {
-	logger := logger.GetLoggerFromContext(ctx)
+	logger := logger.GetSlogLoggerFromContext(ctx)
 	user, err := s.repo.Create(ctx, "login,password,created_at", login, password, time.Now())
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
 			if pgErr.Code == pgerrcode.UniqueViolation {
 				err = &models.CustomErr{Code: models.CustomErrUserLoginBusy}
-				logger.Sugar().Error(err)
+				logger.Error(err.Error())
 				return nil, err
 			}
 		}
-		logger.Sugar().Error(err)
+		logger.Error(err.Error())
 		return nil, err
 	}
 	return user, nil
@@ -61,15 +61,15 @@ func (s *PostgresUserStorage) Create(ctx context.Context, login string, password
 
 // Get obtains user from storage
 func (s *PostgresUserStorage) Get(ctx context.Context, login string) (*models.User, error) {
-	logger := logger.GetLoggerFromContext(ctx)
+	logger := logger.GetSlogLoggerFromContext(ctx)
 	user, err := s.repo.GetByID(ctx, login)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			err = &models.CustomErr{Code: models.CustomErrUserNotFound}
-			logger.Sugar().Error(err)
+			logger.Error(err.Error())
 			return nil, err
 		}
-		logger.Sugar().Error(err)
+		logger.Error(err.Error())
 		return nil, err
 	}
 	return user, nil
@@ -77,7 +77,7 @@ func (s *PostgresUserStorage) Get(ctx context.Context, login string) (*models.Us
 
 // AddBalance adds specified accrual to user's balance
 func (s *PostgresUserStorage) AddBalance(ctx context.Context, login string, accrual *float32) error {
-	logger := logger.GetLoggerFromContext(ctx)
+	logger := logger.GetSlogLoggerFromContext(ctx)
 	repo := s.repo
 	tx := models.GetTransactionFromContext(ctx)
 	if tx != nil {
@@ -85,7 +85,7 @@ func (s *PostgresUserStorage) AddBalance(ctx context.Context, login string, accr
 	}
 	_, err := repo.Update(ctx, "UPDATE users SET balance = balance + $1 WHERE login = $2", accrual, login)
 	if err != nil {
-		logger.Sugar().Error(err)
+		logger.Error(err.Error())
 		return err
 	}
 	return err
@@ -93,7 +93,7 @@ func (s *PostgresUserStorage) AddBalance(ctx context.Context, login string, accr
 
 // WithdrawBalance withdraws specified sum from user's balance
 func (s *PostgresUserStorage) WithdrawBalance(ctx context.Context, login string, sum float32) error {
-	logger := logger.GetLoggerFromContext(ctx)
+	logger := logger.GetSlogLoggerFromContext(ctx)
 	repo := s.repo
 	tx := models.GetTransactionFromContext(ctx)
 	if tx != nil {
@@ -101,12 +101,12 @@ func (s *PostgresUserStorage) WithdrawBalance(ctx context.Context, login string,
 	}
 	tag, err := repo.Update(ctx, "UPDATE users SET balance = balance - $1 WHERE login = $2 AND balance >= $1", sum, login)
 	if err != nil {
-		logger.Sugar().Error(err)
+		logger.Error(err.Error())
 		return err
 	}
 	if tag.RowsAffected() == 0 {
 		err = &models.CustomErr{Code: models.CustomErrUserBalanceNotEnough}
-		logger.Sugar().Error(err)
+		logger.Error(err.Error())
 		return err
 	}
 	return err

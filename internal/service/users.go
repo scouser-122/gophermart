@@ -28,20 +28,20 @@ func NewUsersService(
 
 // Register runs registration process for specified user
 func (service *UsersService) Register(ctx context.Context, user *models.User) (*models.User, error) {
-	logger := logger.GetLoggerFromContext(ctx)
+	logger := logger.GetSlogLoggerFromContext(ctx)
 	if user.Login == "" {
 		err := &models.CustomErr{Code: models.CustomErrUserLoginInvalidFormat}
-		logger.Sugar().Error(err)
+		logger.Error(err.Error())
 		return nil, err
 	}
 	if user.Password == "" {
 		err := &models.CustomErr{Code: models.CustomErrUserPasswordInvalidFormat}
-		logger.Sugar().Error(err)
+		logger.Error(err.Error())
 		return nil, err
 	}
 	passwordHash, err := utils.CountSha256Sum(user.Password)
 	if err != nil {
-		logger.Sugar().Error(err)
+		logger.Error(err.Error())
 		return nil, err
 	}
 	user.Password = passwordHash
@@ -54,15 +54,15 @@ func (service *UsersService) Register(ctx context.Context, user *models.User) (*
 
 // Login runs login process for specified user
 func (service *UsersService) Login(ctx context.Context, user *models.User) error {
-	logger := logger.GetLoggerFromContext(ctx)
+	logger := logger.GetSlogLoggerFromContext(ctx)
 	if user.Login == "" {
 		err := &models.CustomErr{Code: models.CustomErrUserLoginInvalidFormat}
-		logger.Sugar().Error(err)
+		logger.Error(err.Error())
 		return err
 	}
 	if user.Password == "" {
 		err := &models.CustomErr{Code: models.CustomErrUserPasswordInvalidFormat}
-		logger.Sugar().Error(err)
+		logger.Error(err.Error())
 		return err
 	}
 	storedUser, err := service.usersStorage.Get(ctx, user.Login)
@@ -75,7 +75,7 @@ func (service *UsersService) Login(ctx context.Context, user *models.User) error
 	}
 	if passwordHash != storedUser.Password {
 		err := &models.CustomErr{Code: models.CustomErrUserLoginPasswordNotMatch}
-		logger.Sugar().Error(err)
+		logger.Error(err.Error())
 		return err
 	}
 	return nil

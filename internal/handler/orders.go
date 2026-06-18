@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
+	"log/slog"
 	"net/http"
 
 	"github.com/pkg/errors"
@@ -11,7 +12,6 @@ import (
 	"github.com/scouser-122/gophermart/internal/logger"
 	"github.com/scouser-122/gophermart/internal/models"
 	"github.com/scouser-122/gophermart/internal/service"
-	"go.uber.org/zap"
 )
 
 // OrdersHandler specifies http request handler for requests to Orders service
@@ -34,11 +34,11 @@ func NewOrdersHandler(
 // HandleUploadOrder processes order upload request
 func (h *OrdersHandler) HandleUploadOrder(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("content-type", "application/json")
-	logger := logger.GetLoggerFromContext(req.Context())
+	logger := logger.GetSlogLoggerFromContext(req.Context())
 
 	reqContentType := req.Header.Get("Content-Type")
 	if reqContentType != "text/plain" {
-		logger.Sugar().Errorf("incorrect request content type", reqContentType)
+		logger.Error("incorrect request content type", "contentType", reqContentType)
 		res.WriteHeader(http.StatusBadRequest)
 		res.Write(models.NewErrorResponseBuffer("incorrect request content type"))
 		return
@@ -46,7 +46,7 @@ func (h *OrdersHandler) HandleUploadOrder(res http.ResponseWriter, req *http.Req
 
 	bodyBuf, err := io.ReadAll(req.Body)
 	if err != nil {
-		logger.Error("cannot read request body", zap.Error(err))
+		logger.Error("cannot read request body", "err", err)
 		res.WriteHeader(http.StatusBadRequest)
 		res.Write(models.NewErrorResponseBuffer("cannot read request body"))
 		return
@@ -71,7 +71,7 @@ func (h *OrdersHandler) HandleUploadOrder(res http.ResponseWriter, req *http.Req
 			if status >= http.StatusBadRequest {
 				res.Write(models.NewErrorResponseBuffer(message))
 			} else {
-				logger.Sugar().Info(message)
+				logger.Info(message)
 				res.Write(models.NewSuccessResponseBuffer(message))
 			}
 			return
@@ -83,7 +83,7 @@ func (h *OrdersHandler) HandleUploadOrder(res http.ResponseWriter, req *http.Req
 	}
 
 	successMessage := "order successfully saved"
-	logger.Info(successMessage, zap.String("id", orderID))
+	logger.Info(successMessage, slog.String("id", orderID))
 	res.WriteHeader(http.StatusAccepted)
 	res.Write(models.NewSuccessResponseBuffer(successMessage))
 }
@@ -111,7 +111,7 @@ func processCustomErrorOrderUpload(customErr *models.CustomErr) (int, string) {
 // HandleGetUserOrders processes user orders request
 func (h *OrdersHandler) HandleGetUserOrders(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("content-type", "application/json")
-	logger := logger.GetLoggerFromContext(req.Context())
+	logger := logger.GetSlogLoggerFromContext(req.Context())
 
 	userLogin, ok := req.Context().Value(UserLoginContextKey).(string)
 	if !ok {
@@ -128,10 +128,10 @@ func (h *OrdersHandler) HandleGetUserOrders(res http.ResponseWriter, req *http.R
 			status, message := processCustomErrorGetUserOrders(customErr)
 			res.WriteHeader(status)
 			if status >= http.StatusBadRequest {
-				logger.Error(message, zap.Error(err))
+				logger.Error(message, "err", err)
 				res.Write(models.NewErrorResponseBuffer(message))
 			} else {
-				logger.Sugar().Info(message)
+				logger.Info(message)
 				res.Write(models.NewSuccessResponseBuffer(message))
 			}
 			return
@@ -145,7 +145,7 @@ func (h *OrdersHandler) HandleGetUserOrders(res http.ResponseWriter, req *http.R
 	var buf bytes.Buffer
 	enc := json.NewEncoder(&buf)
 	if err := enc.Encode(orders); err != nil {
-		logger.Error("error encoding response ", zap.Error(err))
+		logger.Error("error encoding response ", "err", err)
 		res.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -172,7 +172,7 @@ func processCustomErrorGetUserOrders(customErr *models.CustomErr) (int, string) 
 // HandleWithdrawBalance processes withdraw balance for order request
 func (h *OrdersHandler) HandleWithdrawBalance(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("content-type", "application/json")
-	logger := logger.GetLoggerFromContext(req.Context())
+	logger := logger.GetSlogLoggerFromContext(req.Context())
 
 	userLogin, ok := req.Context().Value(UserLoginContextKey).(string)
 	if !ok {
@@ -185,7 +185,7 @@ func (h *OrdersHandler) HandleWithdrawBalance(res http.ResponseWriter, req *http
 	dec := json.NewDecoder(req.Body)
 	var requestBody models.WithdrawBalanceRequest
 	if err := dec.Decode(&requestBody); err != nil {
-		logger.Error("error decoding request ", zap.Error(err))
+		logger.Error("error decoding request ", "err", err)
 		res.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -195,7 +195,7 @@ func (h *OrdersHandler) HandleWithdrawBalance(res http.ResponseWriter, req *http
 		var customErr *models.CustomErr
 		if errors.As(err, &customErr) {
 			status, message := processCustomErrorWithdrawBalance(customErr)
-			logger.Sugar().Error(message, zap.Int("status", status))
+			logger.Error(message, slog.Int("status", status))
 			res.WriteHeader(status)
 			res.Write(models.NewErrorResponseBuffer(message))
 			return
@@ -235,7 +235,7 @@ func processCustomErrorWithdrawBalance(customErr *models.CustomErr) (int, string
 // HandleGetUserWithdrawals processes user withdrawals request
 func (h *OrdersHandler) HandleGetUserWithdrawals(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("content-type", "application/json")
-	logger := logger.GetLoggerFromContext(req.Context())
+	logger := logger.GetSlogLoggerFromContext(req.Context())
 
 	userLogin, ok := req.Context().Value(UserLoginContextKey).(string)
 	if !ok {
@@ -254,7 +254,7 @@ func (h *OrdersHandler) HandleGetUserWithdrawals(res http.ResponseWriter, req *h
 			if status >= http.StatusBadRequest {
 				res.Write(models.NewErrorResponseBuffer(message))
 			} else {
-				logger.Sugar().Info(message)
+				logger.Info(message)
 				res.Write(models.NewSuccessResponseBuffer(message))
 			}
 			return
@@ -268,7 +268,7 @@ func (h *OrdersHandler) HandleGetUserWithdrawals(res http.ResponseWriter, req *h
 	var buf bytes.Buffer
 	enc := json.NewEncoder(&buf)
 	if err := enc.Encode(withdrawals); err != nil {
-		logger.Error("error encoding response ", zap.Error(err))
+		logger.Error("error encoding response ", "err", err)
 		res.WriteHeader(http.StatusInternalServerError)
 		return
 	}

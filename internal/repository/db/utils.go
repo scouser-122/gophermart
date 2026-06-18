@@ -21,10 +21,10 @@ func NewPostgresRepositoryUtils(database *PostgresDatabase) *PostgresRepositoryU
 
 // CreateTransaction creates transaction to be used in several methods
 func (u *PostgresRepositoryUtils) CreateTransaction(ctx context.Context) (models.GenericTransaction, error) {
-	logger := logger.GetLoggerFromContext(ctx)
+	logger := logger.GetSlogLoggerFromContext(ctx)
 	tx, err := u.Database.Begin(ctx)
 	if err != nil {
-		logger.Sugar().Error(err)
+		logger.Error(err.Error())
 		return nil, err
 	}
 	return tx, nil

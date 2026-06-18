@@ -8,7 +8,6 @@ import (
 	"github.com/scouser-122/gophermart/internal/logger"
 	"github.com/scouser-122/gophermart/internal/models"
 	"github.com/scouser-122/gophermart/internal/service"
-	"go.uber.org/zap"
 )
 
 const UserLoginContextKey string = "userLogin"
@@ -22,9 +21,11 @@ func AuthMiddleware(h http.HandlerFunc, jwtService *service.JwtService) http.Han
 			return
 		}
 
+		logger := logger.GetSlogLoggerFromContext(r.Context())
+
 		parts := strings.Split(authHeader, " ")
 		if len(parts) != 2 || strings.ToLower(parts[0]) != "bearer" {
-			logger.Sugar.Error("invalid authorization format")
+			logger.Error("invalid authorization format")
 			w.WriteHeader(http.StatusBadRequest)
 			w.Write(models.NewErrorResponseBuffer("authorization failed"))
 			return
@@ -34,7 +35,7 @@ func AuthMiddleware(h http.HandlerFunc, jwtService *service.JwtService) http.Han
 
 		userLogin, err := jwtService.GetUserLoginFromJWT(tokenString)
 		if err != nil {
-			logger.Sugar.Error("invalid or expired token", zap.Error(err))
+			logger.Error("invalid or expired token", "err", err)
 			w.WriteHeader(http.StatusUnauthorized)
 			w.Write(models.NewErrorResponseBuffer("authorization failed"))
 			return

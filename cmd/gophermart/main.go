@@ -3,8 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 
+	"github.com/alchemy/rotoslog"
 	"github.com/scouser-122/gophermart/internal/config"
 	"github.com/scouser-122/gophermart/internal/handler"
 	"github.com/scouser-122/gophermart/internal/logger"
@@ -16,13 +18,25 @@ func main() {
 	serverConfig := config.DefaultServerConfig()
 	config.ParseFlags(&serverConfig)
 	config.ParseEnvVariables(&serverConfig)
-	if err := logger.Initialize(serverConfig.LogLevel, serverConfig.Environment); err != nil {
-		panic(err)
+
+	var fileHandler *rotoslog.Handler
+	if serverConfig.Environment == "prod" {
+		var err error
+		fileHandler, err = rotoslog.NewHandler(
+			rotoslog.FilePrefix("gophermart-"),
+			rotoslog.MaxFileSize(32*1024*1024),
+			rotoslog.MaxRotatedFiles(3),
+		)
+		if err != nil {
+			panic(err)
+		}
+		defer fileHandler.Close()
 	}
+	logger.Initialize(serverConfig.LogLevel, fileHandler)
 
 	database := db.NewPostgresDB(serverConfig)
 	if err := database.Open(); err != nil {
-		logger.Sugar.Errorf("cannot connect to database: %w", err)
+		slog.Error("cannot connect to database", "err", err)
 		panic(err)
 	}
 	if err := database.Ping(context.Background()); err != nil {
@@ -42,6 +56,10 @@ func main() {
 	handlers := handler.CreateHandlers(userService, ordersService, jwtService)
 	router := handler.CreateChiRouter(&handlers, &serverConfig, jwtService)
 
-	logger.Sugar.Infof("starting server on http://%s", serverConfig.RunAddr)
-	logger.Sugar.Fatal(http.ListenAndServe(serverConfig.RunAddr, router))
+	slog.Info("starting server", "address", serverConfig.RunAddr)
+	err := http.ListenAndServe(serverConfig.RunAddr, router)
+	if err != nil {
+		slog.Error(err.Error())
+		panic(err)
+	}
 }

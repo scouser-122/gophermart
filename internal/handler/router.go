@@ -1,11 +1,11 @@
 package handler
 
 import (
+	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/scouser-122/gophermart/internal/config"
-	"github.com/scouser-122/gophermart/internal/logger"
 	"github.com/scouser-122/gophermart/internal/service"
 )
 
@@ -27,7 +27,7 @@ func CreateChiRouter(handlers *[]Handler, serverConfig *config.ServerConfig, jwt
 		case http.MethodPost:
 			r.Post(h.URLPathPattern, middleware(h))
 		default:
-			logger.Sugar.Errorf("Provided unsupported request handler method: %q", h)
+			slog.Error("Provided unsupported request handler method", "method", h.Method)
 		}
 	}
 	r.MethodNotAllowed(func(w http.ResponseWriter, r *http.Request) {
